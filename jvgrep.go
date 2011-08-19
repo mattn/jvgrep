@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"regexp"
+	"syscall"
 )
 
 var encodings = []string{
@@ -34,6 +35,9 @@ func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
 	}
 	dirmask, _ := filepath.Split(v.pattern)
 	dir = filepath.ToSlash(dir)
+	if dirmask == dir {
+		return true
+	}
 
 	m, e := filepath.Match(dirmask, dir+"/")
 	return e == nil && m == true
@@ -112,7 +116,11 @@ func main() {
 		if strings.Index(i, "*") != -1 {
 			break
 		}
-		root = filepath.Join(root, i)
+		if syscall.OS == "windows" && len(i) == 2 && filepath.VolumeName(i) != "" {
+			root = i + "/"
+		} else {
+			root = filepath.Join(root, i)
+		}
 	}
 	if root == "" {
 		root = "."
