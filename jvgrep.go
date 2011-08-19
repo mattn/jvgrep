@@ -28,28 +28,23 @@ type grepper struct {
 	oc      *iconv.Iconv
 }
 
-func (v *grepper) VisitDir(path string, f *os.FileInfo) bool {
-	if path == "." {
+func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
+	if dir == "." {
 		return true
 	}
 	dirmask, _ := filepath.Split(v.pattern)
-	dirmask = dirmask[:len(dirmask)-1]
-	path = path[:len(path)-1]
-	m, e := filepath.Match(dirmask, path)
+	dir = filepath.ToSlash(dir)
+
+	m, e := filepath.Match(dirmask, dir+"/")
 	return e == nil && m == true
 }
 
 func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	dirmask, filemask := filepath.Split(v.pattern)
-	dirmask = dirmask[:len(dirmask)-1]
 	dir, file := filepath.Split(path)
-	if dir == "" {
-		if dirmask != "" {
-			return
-		}
-	} else {
-		dir = dir[:len(dir)-1]
-	}
+
+	dirmask = filepath.ToSlash(dirmask)
+	dir = filepath.ToSlash(dir)
 
 	dm, e := filepath.Match(dirmask, dir)
 	if e != nil {
@@ -60,7 +55,7 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 		return
 	}
 	if dm && fm {
-		v.Grep(path)
+		v.Grep(filepath.ToSlash(path))
 	}
 }
 
@@ -111,9 +106,19 @@ func main() {
 	oc, err := iconv.Open("char", "utf-8")
 	defer oc.Close()
 	g := &grepper{os.Args[2], re, oc}
-	dir, _ := filepath.Split(g.pattern)
-	if len(dir) > 0 && dir[0] == '*' {
-		dir = "."
+
+	root := ""
+	for _, i := range strings.Split(filepath.ToSlash(g.pattern), "/") {
+		if strings.Index(i, "*") != -1 {
+			break
+		}
+		root = filepath.Join(root, i)
 	}
-	filepath.Walk(dir, g, nil)
+	if root == "" {
+		root = "."
+	} else {
+		root += "/"
+	}
+
+	filepath.Walk(root, g, nil)
 }
