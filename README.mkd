@@ -21,9 +21,10 @@ Usage
 
 for example,
 
-    # jvgrep $BI=(B *.txt
+    # jvgrep 表[現示] *.txt
 
 `pattern` should be specify with regexp. `file` can be specify wildcard.
+You can specify `pattern` with regular expression include multi-byte characters..
 
 Supported Encodings
 -------------------
