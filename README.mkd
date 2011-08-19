@@ -1,0 +1,43 @@
+jvgrep
+======
+
+`jvgrep` is grep for japanese vimmer. you can find text from files that writen in another japanese encodings.
+
+Install
+-------
+
+To compile jvgrep, you must install golang.
+
+> http://golang.org/
+
+And type following
+
+    # goinstall github.com/mattn/jvgrep
+
+Usage
+-----
+
+    # jvgrep [pattern] [file]
+
+`pattern` should be specify with regexp. `file` can be specify wildcard.
+
+Supported Encodings
+-------------------
+
+* iso-2022-jp-3
+* iso-2022-jp
+* euc-jisx0213
+* euc-jp
+* utf-8
+* ucs-bom
+* euc-jp
+* eucjp-ms
+* cp932
+
+Vim Enhancement
+---------------
+
+Add following to your vimrc
+
+    set grepprg=jvgrep
+
