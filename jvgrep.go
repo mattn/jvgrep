@@ -120,10 +120,10 @@ func main() {
 	}
 	oc, err := iconv.Open("char", "utf-8")
 	defer oc.Close()
-	g := &grepper{os.Args[2], re, oc}
+	g := &grepper{filepath.ToSlash(os.Args[2]), re, oc}
 
 	root := ""
-	for _, i := range strings.Split(filepath.ToSlash(g.pattern), "/") {
+	for _, i := range strings.Split(g.pattern, "/") {
 		if strings.Index(i, "*") != -1 {
 			break
 		}
