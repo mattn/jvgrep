@@ -9,3 +9,7 @@ GOFILES=\
 	jvgrep.go\
 
 include $(GOROOT)/src/Make.cmd
+
+package:
+	cp jvgrep.exe jvgrep-win32/.
+	tar cv jvgrep-win32 | gzip > jvgrep-win32.tar.gz

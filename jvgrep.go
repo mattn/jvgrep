@@ -35,12 +35,23 @@ func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
 	}
 	dirmask, _ := filepath.Split(v.pattern)
 	dir = filepath.ToSlash(dir)
-	if dirmask == dir {
-		return true
+
+	mi := strings.Split(dirmask, "/")
+	if len(mi) == 2 && mi[0] == "**" {
+		if m, e := filepath.Match(dirmask, dir); e != nil || m == false {
+			return true
+		}
+	}
+	for i, d := range strings.Split(dir, "/") {
+		if len(mi) <= i {
+			break
+		}
+		if m, e := filepath.Match(mi[i], d); e != nil || m == false {
+			return false
+		}
 	}
 
-	m, e := filepath.Match(dirmask, dir+"/")
-	return e == nil && m == true
+	return true
 }
 
 func (v *grepper) VisitFile(path string, f *os.FileInfo) {
