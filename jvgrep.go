@@ -22,7 +22,49 @@ var encodings = []string{
 	"cp932",
 }
 
-func grep(re *regexp.Regexp, path string, oc *iconv.Iconv) {
+type grepper struct {
+	pattern string
+	re      *regexp.Regexp
+	oc      *iconv.Iconv
+}
+
+func (v *grepper) VisitDir(path string, f *os.FileInfo) bool {
+	if path == "." {
+		return true
+	}
+	dirmask, _ := filepath.Split(v.pattern)
+	dirmask = dirmask[:len(dirmask)-1]
+	path = path[:len(path)-1]
+	m, e := filepath.Match(dirmask, path)
+	return e == nil && m == true
+}
+
+func (v *grepper) VisitFile(path string, f *os.FileInfo) {
+	dirmask, filemask := filepath.Split(v.pattern)
+	dirmask = dirmask[:len(dirmask)-1]
+	dir, file := filepath.Split(path)
+	if dir == "" {
+		if dirmask != "" {
+			return
+		}
+	} else {
+		dir = dir[:len(dir)-1]
+	}
+
+	dm, e := filepath.Match(dirmask, dir)
+	if e != nil {
+		return
+	}
+	fm, e := filepath.Match(filemask, file)
+	if e != nil {
+		return
+	}
+	if dm && fm {
+		v.Grep(path)
+	}
+}
+
+func (v *grepper) Grep(path string) {
 	f, err := ioutil.ReadFile(path)
 	if err != nil {
 		return
@@ -38,11 +80,11 @@ func grep(re *regexp.Regexp, path string, oc *iconv.Iconv) {
 			if err != nil {
 				break
 			}
-			bs := re.FindAll([]byte(t), -1)
+			bs := v.re.FindAll([]byte(t), -1)
 			if len(bs) == 0 {
 				continue
 			}
-			o, err := oc.Conv(t)
+			o, err := v.oc.Conv(t)
 			if err != nil {
 				o = line
 			}
@@ -66,14 +108,12 @@ func main() {
 		println(err.String())
 		os.Exit(-1)
 	}
-	m, err := filepath.Glob(os.Args[2])
-	if err != nil {
-		println(err.String())
-		os.Exit(-1)
-	}
 	oc, err := iconv.Open("char", "utf-8")
 	defer oc.Close()
-	for _, f := range m {
-		grep(re, f, oc)
+	g := &grepper{os.Args[2], re, oc}
+	dir, _ := filepath.Split(g.pattern)
+	if len(dir) > 0 && dir[0] == '*' {
+		dir = "."
 	}
+	filepath.Walk(dir, g, nil)
 }
