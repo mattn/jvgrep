@@ -19,6 +19,10 @@ Usage
 
     # jvgrep [pattern] [file]
 
+for example,
+
+    # jvgrep 表 *.txt
+
 `pattern` should be specify with regexp. `file` can be specify wildcard.
 
 Supported Encodings
