@@ -153,7 +153,7 @@ var exclude = flag.String("e", "", "exclude files: specify regexp")
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: jvgrep [pattern] [file...]\n")
+		fmt.Fprintf(os.Stderr, "Usage: jvgrep [options] [pattern] [file...]\n")
 		fmt.Fprintln(os.Stderr, "  Version 0.2")
 		fmt.Fprintln(os.Stderr)
 		flag.PrintDefaults()
