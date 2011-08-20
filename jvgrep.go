@@ -74,10 +74,24 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	}
 }
 
-func (v *grepper) Grep(path string) {
-	f, err := ioutil.ReadFile(path)
-	if err != nil {
-		return
+func (v *grepper) Grep(input interface{}) {
+	var f []byte
+	var path = ""
+	var ok bool
+	var stdin *os.File
+	var err os.Error
+
+	if path, ok = input.(string); ok {
+		f, err = ioutil.ReadFile(path)
+		if err != nil {
+			return
+		}
+	} else if stdin, ok = input.(*os.File); ok {
+		f, err = ioutil.ReadAll(stdin)
+		if err != nil {
+			return
+		}
+		path = "stdin"
 	}
 	for _, enc := range encodings {
 		ic, err := iconv.Open("utf-8", enc)
@@ -109,7 +123,7 @@ func (v *grepper) Grep(path string) {
 }
 
 func main() {
-	if len(os.Args) < 3 {
+	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "usage: gogrep [pattern] [file...]\n")
 		os.Exit(-1)
 	}
@@ -128,28 +142,33 @@ func main() {
 		}
 	}()
 
-	for _, arg := range os.Args[2:] {
-		g := &grepper{filepath.ToSlash(arg), re, oc}
+	if len(os.Args) == 2 {
+		g := &grepper{"", re, oc}
+		g.Grep(os.Stdin)
+	} else {
+		for _, arg := range os.Args[2:] {
+			g := &grepper{filepath.ToSlash(arg), re, oc}
 
-		root := ""
-		for _, i := range strings.Split(g.pattern, "/") {
-			if strings.Index(i, "*") != -1 {
-				break
+			root := ""
+			for _, i := range strings.Split(g.pattern, "/") {
+				if strings.Index(i, "*") != -1 {
+					break
+				}
+				if syscall.OS == "windows" && len(i) == 2 && filepath.VolumeName(i) != "" {
+					root = i + "/"
+				} else {
+					root = filepath.Join(root, i)
+				}
 			}
-			if syscall.OS == "windows" && len(i) == 2 && filepath.VolumeName(i) != "" {
-				root = i + "/"
-			} else {
-				root = filepath.Join(root, i)
+			if arg != root {
+				if root == "" {
+					root = "."
+				} else {
+					root += "/"
+				}
 			}
-		}
-		if arg != root {
-			if root == "" {
-				root = "."
-			} else {
-				root += "/"
-			}
-		}
 
-		filepath.Walk(root, g, nil)
+			filepath.Walk(root, g, nil)
+		}
 	}
 }
