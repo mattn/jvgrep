@@ -109,8 +109,8 @@ func (v *grepper) Grep(path string) {
 }
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, "usage: gogrep [pattern] [file]")
+	if len(os.Args) < 3 {
+		fmt.Fprintf(os.Stderr, "usage: gogrep [pattern] [file...]\n")
 		os.Exit(-1)
 	}
 	re, err := regexp.Compile(os.Args[1])
@@ -119,25 +119,37 @@ func main() {
 		os.Exit(-1)
 	}
 	oc, err := iconv.Open("char", "utf-8")
-	defer oc.Close()
-	g := &grepper{filepath.ToSlash(os.Args[2]), re, oc}
-
-	root := ""
-	for _, i := range strings.Split(g.pattern, "/") {
-		if strings.Index(i, "*") != -1 {
-			break
-		}
-		if syscall.OS == "windows" && len(i) == 2 && filepath.VolumeName(i) != "" {
-			root = i + "/"
-		} else {
-			root = filepath.Join(root, i)
-		}
+	if err != nil {
+		oc, err = iconv.Open("utf-8", "utf-8")
 	}
-	if root == "" {
-		root = "."
-	} else {
-		root += "/"
-	}
+	defer func() {
+		if oc != nil {
+			oc.Close()
+		}
+	}()
 
-	filepath.Walk(root, g, nil)
+	for _, arg := range os.Args[2:] {
+		g := &grepper{filepath.ToSlash(arg), re, oc}
+
+		root := ""
+		for _, i := range strings.Split(g.pattern, "/") {
+			if strings.Index(i, "*") != -1 {
+				break
+			}
+			if syscall.OS == "windows" && len(i) == 2 && filepath.VolumeName(i) != "" {
+				root = i + "/"
+			} else {
+				root = filepath.Join(root, i)
+			}
+		}
+		if arg != root {
+			if root == "" {
+				root = "."
+			} else {
+				root += "/"
+			}
+		}
+
+		filepath.Walk(root, g, nil)
+	}
 }
