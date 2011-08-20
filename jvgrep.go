@@ -82,7 +82,7 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	}
 	if dm && fm {
 		if *verbose {
-			println(path)
+			println("search:", path)
 		}
 		v.Grep(filepath.ToSlash(path))
 	}
