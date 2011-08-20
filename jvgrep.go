@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/mattn/go-iconv"
@@ -108,16 +109,16 @@ func (v *grepper) Grep(input interface{}) {
 			continue
 		}
 		did := false
-		for n, line := range strings.Split(string(f), "\n") {
-			t, err := ic.Conv(line)
+		for n, line := range bytes.Split(f, []byte{'\n'}) {
+			t, err := ic.ConvBytes(line)
 			if err != nil {
 				break
 			}
-			bs := v.re.FindAll([]byte(t), -1)
-			if len(bs) == 0 {
+			fi := v.re.FindAllIndex(t, -1)
+			if len(fi) == 0 {
 				continue
 			}
-			o, err := v.oc.Conv(t)
+			o, err := v.oc.ConvBytes(t)
 			if err != nil {
 				o = line
 			}
