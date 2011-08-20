@@ -145,6 +145,7 @@ func (v *grepper) Grep(input interface{}) {
 	}
 }
 
+var encs = flag.String("E", "", "encodings")
 var recursive = flag.Bool("R", false, "recursive")
 var list = flag.Bool("l", false, "listing files")
 var verbose = flag.Bool("v", false, "verbose")
@@ -175,6 +176,15 @@ func main() {
 			os.Exit(-1)
 		}
 	}
+	if *encs != "" {
+		encodings = strings.Split(*encs, ",")
+	} else {
+		enc_env := os.Getenv("JVGREP_ENCODINGS")
+		if enc_env != "" {
+			encodings = strings.Split(enc_env, ",")
+		}
+	}
+
 	oc, err := iconv.Open("char", "utf-8")
 	if err != nil {
 		oc, err = iconv.Open("utf-8", "utf-8")
