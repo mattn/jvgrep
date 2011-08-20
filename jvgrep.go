@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"syscall"
 )
@@ -60,7 +61,11 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	dir, file := filepath.Split(path)
 
 	dirmask = filepath.ToSlash(dirmask)
-	dir = filepath.ToSlash(dir)
+	if dirmask == "**/" {
+		dir = dirmask
+	} else {
+		dir = filepath.ToSlash(dir)
+	}
 
 	dm, e := filepath.Match(dirmask, dir)
 	if e != nil {
@@ -71,6 +76,9 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 		return
 	}
 	if dm && fm {
+		if *verbose {
+			fmt.Println(path)
+		}
 		v.Grep(filepath.ToSlash(path))
 	}
 }
@@ -113,15 +121,25 @@ func (v *grepper) Grep(input interface{}) {
 			if err != nil {
 				o = line
 			}
-			fmt.Printf("%s:%d:%s\n", path, n+1, o)
-			did = true
+			if *list {
+				fmt.Println(path)
+				did = true
+				break
+			} else {
+				fmt.Printf("%s:%d:%s\n", path, n+1, o)
+				did = true
+			}
 		}
 		ic.Close()
+		runtime.GC()
 		if did {
 			break
 		}
 	}
 }
+
+var list = flag.Bool("l", false, "listing files")
+var verbose = flag.Bool("v", false, "verbose")
 
 func main() {
 	flag.Usage = func() {
