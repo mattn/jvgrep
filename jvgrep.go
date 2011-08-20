@@ -20,7 +20,6 @@ var encodings = []string{
 	"euc-jisx0213",
 	"euc-jp",
 	"utf-8",
-	"ucs-bom",
 	"euc-jp",
 	"eucjp-ms",
 	"cp932",
