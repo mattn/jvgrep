@@ -125,7 +125,7 @@ func (v *grepper) Grep(input interface{}) {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: gogrep [pattern] [file...]\n")
+		fmt.Fprintf(os.Stderr, "usage: jvgrep [pattern] [file...]\n")
 		flag.PrintDefaults()
 		os.Exit(-1)
 	}
