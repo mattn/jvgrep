@@ -145,11 +145,11 @@ func (v *grepper) Grep(input interface{}) {
 	}
 }
 
-var encs = flag.String("E", "", "encodings")
+var encs = flag.String("E", "", "encodings: comma separated")
 var recursive = flag.Bool("R", false, "recursive")
 var list = flag.Bool("l", false, "listing files")
 var verbose = flag.Bool("v", false, "verbose")
-var exclude = flag.String("e", "", "exclude files: specify regexp")
+var exclude = flag.String("e", "", "exclude files: specify as regexp")
 
 func main() {
 	flag.Usage = func() {
