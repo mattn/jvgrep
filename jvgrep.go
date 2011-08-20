@@ -29,6 +29,7 @@ var encodings = []string{
 type grepper struct {
 	pattern string
 	re      *regexp.Regexp
+	ere     *regexp.Regexp
 	oc      *iconv.Iconv
 }
 
@@ -58,6 +59,9 @@ func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
 }
 
 func (v *grepper) VisitFile(path string, f *os.FileInfo) {
+	if v.ere != nil && v.ere.MatchString(path) {
+		return
+	}
 	dirmask, filemask := filepath.Split(v.pattern)
 	dir, file := filepath.Split(path)
 
@@ -78,7 +82,7 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	}
 	if dm && fm {
 		if *verbose {
-			fmt.Println(path)
+			println(path)
 		}
 		v.Grep(filepath.ToSlash(path))
 	}
@@ -122,6 +126,9 @@ func (v *grepper) Grep(input interface{}) {
 			if err != nil {
 				o = line
 			}
+			if *verbose {
+				println("found(" + enc + "):", path)
+			}
 			if *list {
 				fmt.Println(path)
 				did = true
@@ -141,6 +148,7 @@ func (v *grepper) Grep(input interface{}) {
 
 var list = flag.Bool("l", false, "listing files")
 var verbose = flag.Bool("v", false, "verbose")
+var exclude = flag.String("e", "", "exclude files: specify regexp")
 
 func main() {
 	flag.Usage = func() {
@@ -159,6 +167,14 @@ func main() {
 		println(err.String())
 		os.Exit(-1)
 	}
+	var ere *regexp.Regexp
+	if *exclude != "" {
+		ere, err = regexp.Compile(*exclude)
+		if err != nil {
+			println(err.String())
+			os.Exit(-1)
+		}
+	}
 	oc, err := iconv.Open("char", "utf-8")
 	if err != nil {
 		oc, err = iconv.Open("utf-8", "utf-8")
@@ -170,11 +186,11 @@ func main() {
 	}()
 
 	if flag.NArg() == 1 {
-		g := &grepper{"", re, oc}
+		g := &grepper{"", re, ere, oc}
 		g.Grep(os.Stdin)
 	} else {
 		for _, arg := range flag.Args()[1:] {
-			g := &grepper{filepath.ToSlash(arg), re, oc}
+			g := &grepper{filepath.ToSlash(arg), re, ere, oc}
 
 			root := ""
 			for _, i := range strings.Split(g.pattern, "/") {
