@@ -144,6 +144,7 @@ var verbose = flag.Bool("v", false, "verbose")
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: jvgrep [pattern] [file...]\n")
+		fmt.Fprintln(os.Stderr, "  version 0.1")
 		flag.PrintDefaults()
 		os.Exit(-1)
 	}
