@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"flag"
+	"fmt"
 	"github.com/mattn/go-iconv"
-	"path/filepath"
 	"io/ioutil"
 	"os"
-	"strings"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"syscall"
 )
 
