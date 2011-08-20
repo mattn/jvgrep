@@ -34,7 +34,7 @@ type grepper struct {
 }
 
 func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
-	if dir == "." {
+	if dir == "." || *recursive {
 		return true
 	}
 	dirmask, _ := filepath.Split(v.pattern)
@@ -66,7 +66,7 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	dir, file := filepath.Split(path)
 
 	dirmask = filepath.ToSlash(dirmask)
-	if dirmask == "**/" {
+	if dirmask == "**/" || *recursive {
 		dir = dirmask
 	} else {
 		dir = filepath.ToSlash(dir)
@@ -146,6 +146,7 @@ func (v *grepper) Grep(input interface{}) {
 	}
 }
 
+var recursive = flag.Bool("R", false, "recursive")
 var list = flag.Bool("l", false, "listing files")
 var verbose = flag.Bool("v", false, "verbose")
 var exclude = flag.String("e", "", "exclude files: specify regexp")
