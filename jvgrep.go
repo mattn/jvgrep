@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"flag"
 	"github.com/mattn/go-iconv"
 	"path/filepath"
 	"io/ioutil"
@@ -123,11 +124,17 @@ func (v *grepper) Grep(input interface{}) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: gogrep [pattern] [file...]\n")
+		flag.PrintDefaults()
 		os.Exit(-1)
 	}
-	re, err := regexp.Compile(os.Args[1])
+	flag.Parse()
+
+	if flag.NArg() == 0 {
+		flag.Usage()
+	}
+	re, err := regexp.Compile(flag.Arg(0))
 	if err != nil {
 		println(err.String())
 		os.Exit(-1)
@@ -142,11 +149,11 @@ func main() {
 		}
 	}()
 
-	if len(os.Args) == 2 {
+	if flag.NArg() == 1 {
 		g := &grepper{"", re, oc}
 		g.Grep(os.Stdin)
 	} else {
-		for _, arg := range os.Args[2:] {
+		for _, arg := range flag.Args()[1:] {
 			g := &grepper{filepath.ToSlash(arg), re, oc}
 
 			root := ""
