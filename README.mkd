@@ -17,11 +17,17 @@ And type following
 Usage
 -----
 
-    # jvgrep [pattern] [file]
+    usage: jvgrep [pattern] [file...]
+      version 0.1
+      -E="": encodings
+      -R=false: recursive
+      -e="": exclude files: specify regexp
+      -l=false: listing files
+      -v=false: verbose
 
 for example,
 
-    # jvgrep 表[現示] *.txt
+    # jvgrep 表[現示] "**/*.txt"
 
 `pattern` should be specify with regexp. `file` can be specify wildcard.
 You can specify `pattern` with regular expression include multi-byte characters..
