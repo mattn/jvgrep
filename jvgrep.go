@@ -126,7 +126,7 @@ func (v *grepper) Grep(input interface{}) {
 				o = line
 			}
 			if *verbose {
-				println("found(" + enc + "):", path)
+				println("found("+enc+"):", path)
 			}
 			if *list {
 				fmt.Println(path)
