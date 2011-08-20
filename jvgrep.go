@@ -118,7 +118,8 @@ func (v *grepper) Grep(input interface{}) {
 				break
 			}
 			fi := v.re.FindAllIndex(t, -1)
-			if len(fi) == 0 {
+			c := len(fi)
+			if (!*invert && c == 0) || (*invert && c > 0) {
 				continue
 			}
 			o, err := v.oc.ConvBytes(t)
@@ -145,11 +146,12 @@ func (v *grepper) Grep(input interface{}) {
 	}
 }
 
-var encs = flag.String("E", "", "encodings: comma separated")
+var encs = flag.String("enc", "", "encodings: comma separated")
 var recursive = flag.Bool("R", false, "recursive")
 var list = flag.Bool("l", false, "listing files")
-var verbose = flag.Bool("v", false, "verbose")
-var exclude = flag.String("e", "", "exclude files: specify as regexp")
+var invert = flag.Bool("v", false, "invert match")
+var verbose = flag.Bool("S", false, "verbose")
+var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
 
 func main() {
 	flag.Usage = func() {
