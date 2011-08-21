@@ -122,10 +122,6 @@ func (v *grepper) Grep(input interface{}) {
 			if (!*invert && c == 0) || (*invert && c > 0) {
 				continue
 			}
-			o, err := v.oc.ConvBytes(t)
-			if err != nil {
-				o = line
-			}
 			if *verbose {
 				println("found("+enc+"):", path)
 			}
@@ -133,10 +129,13 @@ func (v *grepper) Grep(input interface{}) {
 				fmt.Println(path)
 				did = true
 				break
-			} else {
-				fmt.Printf("%s:%d:%s\n", path, n+1, o)
-				did = true
 			}
+			o, err := v.oc.ConvBytes(t)
+			if err != nil {
+				o = line
+			}
+			fmt.Printf("%s:%d:%s\n", path, n+1, o)
+			did = true
 		}
 		ic.Close()
 		runtime.GC()
