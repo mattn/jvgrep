@@ -31,6 +31,7 @@ for example,
 
 `pattern` should be specify with regexp. `file` can be specify wildcard.
 You can specify `pattern` with regular expression include multi-byte characters..
+If you want to use own encodings for jvgrep, try to set environment variable $JVGREP_ENCODINGS to specify encodings separated with comma.
 
 Supported Encodings
 -------------------
