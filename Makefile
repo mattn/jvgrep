@@ -4,6 +4,7 @@
 
 include $(GOROOT)/src/Make.inc
 
+VERSION=0.2
 TARG=jvgrep
 GOFILES=\
 	jvgrep.go\
@@ -11,5 +12,7 @@ GOFILES=\
 include $(GOROOT)/src/Make.cmd
 
 package:
-	cp jvgrep.exe jvgrep-win32/.
-	tar cv jvgrep-win32 | gzip > jvgrep-win32.tar.gz
+	-mkdir jvgrep-win32-$(VERSION)/.
+	cp iconv.dll jvgrep-win32-$(VERSION)/.
+	cp jvgrep.exe jvgrep-win32-$(VERSION)/.
+	tar cv jvgrep-win32-$(VERSION) | gzip > jvgrep-win32-$(VERSION).tar.gz
