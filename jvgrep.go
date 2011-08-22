@@ -21,7 +21,6 @@ var encodings = []string{
 	"euc-jp",
 	"utf-8",
 	"ucs-2",
-	"ucs-2be",
 	"euc-jp",
 	"eucjp-ms",
 	"cp932",
