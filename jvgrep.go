@@ -249,6 +249,10 @@ func main() {
 					root += "/"
 				}
 			}
+			root = filepath.Clean(root + "/") + "/"
+			if *recursive && !strings.HasSuffix(g.pattern, "/") {
+				g.pattern += "/"
+			}
 
 			filepath.Walk(root, g, nil)
 		}
