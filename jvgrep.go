@@ -155,6 +155,7 @@ var encs = flag.String("enc", "", "encodings: comma separated")
 var recursive = flag.Bool("R", false, "recursive")
 var list = flag.Bool("l", false, "listing files")
 var invert = flag.Bool("v", false, "invert match")
+var ver = flag.Bool("V", false, "version")
 var verbose = flag.Bool("S", false, "verbose")
 var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
 
@@ -173,6 +174,10 @@ func main() {
 	}
 	flag.Parse()
 
+	if *ver {
+		fmt.Fprintf(os.Stdout, "%s\n", version)
+		os.Exit(0)
+	}
 	if flag.NArg() == 0 {
 		flag.Usage()
 	}
