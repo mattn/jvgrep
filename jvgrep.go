@@ -71,6 +71,9 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	} else {
 		dir = filepath.ToSlash(dir)
 	}
+	if *recursive && filemask == "" {
+		filemask = "*"
+	}
 
 	dm, e := filepath.Match(dirmask, dir)
 	if e != nil {
@@ -211,9 +214,16 @@ func main() {
 			g := &grepper{filepath.ToSlash(arg), re, ere, oc}
 
 			root := ""
-			for _, i := range strings.Split(g.pattern, "/") {
+			for n, i := range strings.Split(g.pattern, "/") {
 				if strings.Index(i, "*") != -1 {
 					break
+				}
+				if n == 0 && i == "~" {
+					if syscall.OS == "windows" {
+						i = os.Getenv("USERPROFILE")
+					} else {
+						i = os.Getenv("HOME")
+					}
 				}
 				if syscall.OS == "windows" && len(i) == 2 && filepath.VolumeName(i) != "" {
 					root = i + "/"
