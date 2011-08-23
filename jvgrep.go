@@ -232,10 +232,14 @@ func main() {
 						i = os.Getenv("HOME")
 					}
 				}
-				if syscall.OS == "windows" && len(i) == 2 && filepath.VolumeName(i) != "" {
-					root = i + "/"
-				} else {
-					root = filepath.Join(root, i)
+
+				root = filepath.Join(root, i)
+				if n == 0 {
+					if syscall.OS == "windows" && filepath.VolumeName(i) != "" {
+						root = i + "/"
+					} else if len(root) == 0 {
+						root = "/"
+					}
 				}
 			}
 			if arg != root {
