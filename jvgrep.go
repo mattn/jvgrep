@@ -14,6 +14,8 @@ import (
 	"syscall"
 )
 
+const version = "0.3"
+
 var encodings = []string{
 	"iso-2022-jp-3",
 	"iso-2022-jp",
@@ -159,7 +161,7 @@ var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: jvgrep [options] [pattern] [file...]\n")
-		fmt.Fprintln(os.Stderr, "  Version 0.2")
+		fmt.Fprintf(os.Stderr, "  Version %s", version)
 		fmt.Fprintln(os.Stderr)
 		flag.PrintDefaults()
 		fmt.Fprintln(os.Stderr)
