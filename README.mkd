@@ -17,13 +17,28 @@ And type following
 Usage
 -----
 
-    usage: jvgrep [pattern] [file...]
-      version 0.1
-      -E="": encodings
+    Usage: jvgrep [options] [pattern] [file...]
+      Version 0.4
+      -F=false: fixed match
       -R=false: recursive
-      -e="": exclude files: specify regexp
+      -S=false: verbose
+      -V=false: version
+      -enc="": encodings: comma separated
+      -exclude="": exclude files: specify as regexp
+      -f="": obtain pattern file
       -l=false: listing files
-      -v=false: verbose
+      -v=false: invert match
+    
+      Supported Encodings:
+        iso-2022-jp-3
+        iso-2022-jp
+        euc-jisx0213
+        euc-jp
+        utf-8
+        ucs-2
+        euc-jp
+        eucjp-ms
+        cp932
 
 for example,
 
