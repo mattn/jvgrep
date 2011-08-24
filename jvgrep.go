@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
+	"sre2.googlecode.com/hg/sre2"
 	"runtime"
 	"strings"
 	"syscall"
@@ -31,7 +31,7 @@ var encodings = []string{
 type grepper struct {
 	glob    string
 	pattern interface{}
-	ere     *regexp.Regexp
+	ere     sre2.Re
 	oc      *iconv.Iconv
 }
 
@@ -61,7 +61,7 @@ func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
 }
 
 func (v *grepper) VisitFile(path string, f *os.FileInfo) {
-	if v.ere != nil && v.ere.MatchString(path) {
+	if v.ere != nil && v.ere.Match(path) {
 		return
 	}
 	dirmask, filemask := filepath.Split(v.glob)
@@ -124,8 +124,8 @@ func (v *grepper) Grep(input interface{}) {
 				break
 			}
 			var match bool
-			if re, ok := v.pattern.(*regexp.Regexp); ok {
-				if len(re.FindAllIndex(t, -1)) > 0 {
+			if re, ok := v.pattern.(sre2.Re); ok {
+				if len(re.MatchIndex(string(t))) > 0 {
 					match = true
 				}
 			} else if s, ok := v.pattern.(string); ok {
@@ -192,6 +192,7 @@ func main() {
 		flag.Usage()
 	}
 	var err os.Error
+	var errs *string
 	var pattern interface{}
 
 	instr := ""
@@ -210,18 +211,18 @@ func main() {
 	if *fixed {
 		pattern = instr
 	} else {
-		pattern, err = regexp.Compile(instr)
-		if err != nil {
-			println(err.String())
+		pattern, errs = sre2.Parse(instr)
+		if errs != nil {
+			println(*errs)
 			os.Exit(-1)
 		}
 	}
 
-	var ere *regexp.Regexp
+	var ere sre2.Re
 	if *exclude != "" {
-		ere, err = regexp.Compile(*exclude)
-		if err != nil {
-			println(err.String())
+		ere, errs = sre2.Parse(*exclude)
+		if errs != nil {
+			println(*errs)
 			os.Exit(-1)
 		}
 	}
