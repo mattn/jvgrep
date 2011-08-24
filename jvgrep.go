@@ -164,6 +164,7 @@ var recursive = flag.Bool("R", false, "recursive")
 var list = flag.Bool("l", false, "listing files")
 var invert = flag.Bool("v", false, "invert match")
 var fixed = flag.Bool("F", false, "fixed match")
+var infile = flag.String("f", "", "obtain pattern file")
 var ver = flag.Bool("V", false, "version")
 var verbose = flag.Bool("S", false, "verbose")
 var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
@@ -192,15 +193,30 @@ func main() {
 	}
 	var err os.Error
 	var pattern interface{}
-	if *fixed {
-		pattern = flag.Arg(0)
+
+	instr := ""
+	argindex := 0
+	if len(*infile) > 0 {
+		b, err := ioutil.ReadFile(*infile)
+		if err != nil {
+			println(err.String())
+			os.Exit(-1)
+		}
+		instr = strings.TrimSpace(string(b))
 	} else {
-		pattern, err = regexp.Compile(flag.Arg(0))
+		instr = flag.Arg(0)
+		argindex = 1
+	}
+	if *fixed {
+		pattern = instr
+	} else {
+		pattern, err = regexp.Compile(instr)
 		if err != nil {
 			println(err.String())
 			os.Exit(-1)
 		}
 	}
+
 	var ere *regexp.Regexp
 	if *exclude != "" {
 		ere, err = regexp.Compile(*exclude)
@@ -228,11 +244,11 @@ func main() {
 		}
 	}()
 
-	if flag.NArg() == 1 {
+	if flag.NArg() == 1 && argindex != 0 {
 		g := &grepper{"", pattern, ere, oc}
 		g.Grep(os.Stdin)
 	} else {
-		for _, arg := range flag.Args()[1:] {
+		for _, arg := range flag.Args()[argindex:] {
 			g := &grepper{filepath.ToSlash(arg), pattern, ere, oc}
 
 			root := ""
@@ -264,7 +280,7 @@ func main() {
 					root += "/"
 				}
 			}
-			root = filepath.Clean(root+"/") + "/"
+			root = filepath.Clean(root+"/")
 			if *recursive && !strings.HasSuffix(g.glob, "/") {
 				g.glob += "/"
 			}
