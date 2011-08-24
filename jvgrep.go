@@ -29,8 +29,8 @@ var encodings = []string{
 }
 
 type grepper struct {
-	pattern string
-	re      *regexp.Regexp
+	glob    string
+	pattern interface{}
 	ere     *regexp.Regexp
 	oc      *iconv.Iconv
 }
@@ -39,7 +39,7 @@ func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
 	if dir == "." || *recursive {
 		return true
 	}
-	dirmask, _ := filepath.Split(v.pattern)
+	dirmask, _ := filepath.Split(v.glob)
 	dir = filepath.ToSlash(dir)
 
 	mi := strings.Split(dirmask, "/")
@@ -64,7 +64,7 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	if v.ere != nil && v.ere.MatchString(path) {
 		return
 	}
-	dirmask, filemask := filepath.Split(v.pattern)
+	dirmask, filemask := filepath.Split(v.glob)
 	dir, file := filepath.Split(path)
 
 	dirmask = filepath.ToSlash(dirmask)
@@ -123,9 +123,17 @@ func (v *grepper) Grep(input interface{}) {
 			if err != nil {
 				break
 			}
-			fi := v.re.FindAllIndex(t, -1)
-			c := len(fi)
-			if (!*invert && c == 0) || (*invert && c > 0) {
+			var match bool
+			if re, ok := v.pattern.(*regexp.Regexp); ok {
+				if len(re.FindAllIndex(t, -1)) > 0 {
+					match = true
+				}
+			} else if s, ok := v.pattern.(string); ok {
+				if strings.Index(string(t), s) > -1 {
+					match = true
+				}
+			}
+			if (!*invert && !match) || (*invert && match) {
 				continue
 			}
 			if *verbose {
@@ -155,6 +163,7 @@ var encs = flag.String("enc", "", "encodings: comma separated")
 var recursive = flag.Bool("R", false, "recursive")
 var list = flag.Bool("l", false, "listing files")
 var invert = flag.Bool("v", false, "invert match")
+var fixed = flag.Bool("F", false, "fixed match")
 var ver = flag.Bool("V", false, "version")
 var verbose = flag.Bool("S", false, "verbose")
 var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
@@ -168,7 +177,7 @@ func main() {
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "  Supported Encodings:")
 		for _, enc := range encodings {
-			fmt.Fprintln(os.Stderr, "    " + enc)
+			fmt.Fprintln(os.Stderr, "    "+enc)
 		}
 		os.Exit(-1)
 	}
@@ -181,10 +190,16 @@ func main() {
 	if flag.NArg() == 0 {
 		flag.Usage()
 	}
-	re, err := regexp.Compile(flag.Arg(0))
-	if err != nil {
-		println(err.String())
-		os.Exit(-1)
+	var err os.Error
+	var pattern interface{}
+	if *fixed {
+		pattern = flag.Arg(0)
+	} else {
+		pattern, err = regexp.Compile(flag.Arg(0))
+		if err != nil {
+			println(err.String())
+			os.Exit(-1)
+		}
 	}
 	var ere *regexp.Regexp
 	if *exclude != "" {
@@ -214,14 +229,14 @@ func main() {
 	}()
 
 	if flag.NArg() == 1 {
-		g := &grepper{"", re, ere, oc}
+		g := &grepper{"", pattern, ere, oc}
 		g.Grep(os.Stdin)
 	} else {
 		for _, arg := range flag.Args()[1:] {
-			g := &grepper{filepath.ToSlash(arg), re, ere, oc}
+			g := &grepper{filepath.ToSlash(arg), pattern, ere, oc}
 
 			root := ""
-			for n, i := range strings.Split(g.pattern, "/") {
+			for n, i := range strings.Split(g.glob, "/") {
 				if strings.Index(i, "*") != -1 {
 					break
 				}
@@ -249,9 +264,9 @@ func main() {
 					root += "/"
 				}
 			}
-			root = filepath.Clean(root + "/") + "/"
-			if *recursive && !strings.HasSuffix(g.pattern, "/") {
-				g.pattern += "/"
+			root = filepath.Clean(root+"/") + "/"
+			if *recursive && !strings.HasSuffix(g.glob, "/") {
+				g.glob += "/"
 			}
 
 			filepath.Walk(root, g, nil)
