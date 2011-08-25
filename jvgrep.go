@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sre2.googlecode.com/hg/sre2"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -31,7 +31,7 @@ var encodings = []string{
 type grepper struct {
 	glob    string
 	pattern interface{}
-	ere     sre2.Re
+	ere     *regexp.Regexp
 	oc      *iconv.Iconv
 }
 
@@ -61,7 +61,7 @@ func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
 }
 
 func (v *grepper) VisitFile(path string, f *os.FileInfo) {
-	if v.ere != nil && v.ere.Match(path) {
+	if v.ere != nil && v.ere.MatchString(path) {
 		return
 	}
 	dirmask, filemask := filepath.Split(v.glob)
@@ -124,8 +124,8 @@ func (v *grepper) Grep(input interface{}) {
 				break
 			}
 			var match bool
-			if re, ok := v.pattern.(sre2.Re); ok {
-				if len(re.MatchIndex(string(t))) > 0 {
+			if re, ok := v.pattern.(*regexp.Regexp); ok {
+				if len(re.FindAllIndex(t, 1)) > 0 {
 					match = true
 				}
 			} else if s, ok := v.pattern.(string); ok {
@@ -169,7 +169,7 @@ func (v *grepper) Grep(input interface{}) {
 var encs = flag.String("enc", "", "encodings: comma separated")
 var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
 var fixed = flag.Bool("F", false, "fixed match")
-var ignorecase = flag.Bool("i", false, "ignore case")
+var ignorecase = flag.Bool("i", false, "ignore case(currently fixed only)")
 var infile = flag.String("f", "", "obtain pattern file")
 var invert = flag.Bool("v", false, "invert match")
 var list = flag.Bool("l", false, "listing files")
@@ -219,21 +219,19 @@ func main() {
 	if *fixed {
 		pattern = instr
 	} else {
-		if *ignorecase {
-			instr = "(?i:" + instr + ")"
-		}
-		pattern, errs = sre2.Parse(instr)
-		if errs != nil {
-			println(*errs)
+		pattern, err = regexp.Compile(instr)
+		// TODO: ignorecase
+		if err != nil {
+			println(err.String())
 			os.Exit(-1)
 		}
 	}
 
-	var ere sre2.Re
+	var ere *regexp.Regexp
 	if *exclude != "" {
-		ere, errs = sre2.Parse(*exclude)
+		ere, err = regexp.Compile(*exclude)
 		if errs != nil {
-			println(*errs)
+			println(err.String())
 			os.Exit(-1)
 		}
 	}
