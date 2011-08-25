@@ -18,7 +18,7 @@ Usage
 -----
 
     Usage: jvgrep [options] [pattern] [file...]
-      Version 0.4
+      Version 0.6
       -F=false: fixed match
       -R=false: recursive
       -S=false: verbose
@@ -26,6 +26,7 @@ Usage
       -enc="": encodings: comma separated
       -exclude="": exclude files: specify as regexp
       -f="": obtain pattern file
+      -i=false: ignore case(currently fixed only)
       -l=false: listing files
       -v=false: invert match
     
@@ -56,7 +57,7 @@ Supported Encodings
 * euc-jisx0213
 * euc-jp
 * utf-8
-* ucs-bom
+* ucs-2
 * euc-jp
 * eucjp-ms
 * cp932
