@@ -129,8 +129,15 @@ func (v *grepper) Grep(input interface{}) {
 					match = true
 				}
 			} else if s, ok := v.pattern.(string); ok {
-				if strings.Index(string(t), s) > -1 {
-					match = true
+				if *ignorecase {
+					if strings.Index(strings.ToLower(string(t)),
+						strings.ToLower(s)) > -1 {
+						match = true
+					}
+				} else {
+					if strings.Index(string(t), s) > -1 {
+						match = true
+					}
 				}
 			}
 			if (!*invert && !match) || (*invert && match) {
@@ -160,14 +167,15 @@ func (v *grepper) Grep(input interface{}) {
 }
 
 var encs = flag.String("enc", "", "encodings: comma separated")
-var recursive = flag.Bool("R", false, "recursive")
-var list = flag.Bool("l", false, "listing files")
-var invert = flag.Bool("v", false, "invert match")
+var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
 var fixed = flag.Bool("F", false, "fixed match")
+var ignorecase = flag.Bool("i", false, "ignore case")
 var infile = flag.String("f", "", "obtain pattern file")
+var invert = flag.Bool("v", false, "invert match")
+var list = flag.Bool("l", false, "listing files")
+var recursive = flag.Bool("R", false, "recursive")
 var ver = flag.Bool("V", false, "version")
 var verbose = flag.Bool("S", false, "verbose")
-var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
 
 func main() {
 	flag.Usage = func() {
@@ -211,6 +219,9 @@ func main() {
 	if *fixed {
 		pattern = instr
 	} else {
+		if *ignorecase {
+			instr = "(?i:" + instr + ")"
+		}
 		pattern, errs = sre2.Parse(instr)
 		if errs != nil {
 			println(*errs)
@@ -281,7 +292,7 @@ func main() {
 					root += "/"
 				}
 			}
-			root = filepath.Clean(root+"/")
+			root = filepath.Clean(root + "/")
 			if *recursive && !strings.HasSuffix(g.glob, "/") {
 				g.glob += "/"
 			}
