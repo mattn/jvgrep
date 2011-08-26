@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-const version = "0.6"
+const version = "0.7"
 
 var encodings = []string{
 	"iso-2022-jp-3",
@@ -242,6 +242,11 @@ func main() {
 		if enc_env != "" {
 			encodings = strings.Split(enc_env, ",")
 		}
+	}
+
+	if syscall.OS == "windows" {
+		// set dll name that is first to try to load by go-iconv.
+		os.Setenv("ICONV_DLL", "jvgrep-iconv.dll")
 	}
 
 	oc, err := iconv.Open("char", "utf-8")
