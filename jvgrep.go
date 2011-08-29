@@ -64,6 +64,10 @@ func (v *grepper) VisitFile(path string, f *os.FileInfo) {
 	if v.ere != nil && v.ere.MatchString(path) {
 		return
 	}
+	// FIXME: go should treat UNC path correctly.
+	if syscall.OS == "windows" && len(v.glob) > 2 && v.glob[0:1] != `\\` {
+		path = `\` + path
+	}
 	dirmask, filemask := filepath.Split(v.glob)
 	dir, file := filepath.Split(path)
 
@@ -298,6 +302,10 @@ func main() {
 			root = filepath.Clean(root + "/")
 			if *recursive && !strings.HasSuffix(g.glob, "/") {
 				g.glob += "/"
+			}
+			// FIXME: go should treat UNC path correctly.
+			if syscall.OS == "windows" && len(root) > 2 && g.glob[0:1] != `\\` {
+				root = `\` + root
 			}
 
 			filepath.Walk(root, g, nil)
