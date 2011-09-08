@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
+	"exp/regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -219,8 +219,11 @@ func main() {
 	if *fixed {
 		pattern = instr
 	} else {
-		pattern, err = regexp.Compile(instr)
 		// TODO: ignorecase
+		if *ignorecase {
+			instr = "(?i:" + instr + ")";
+		}
+		pattern, err = regexp.Compile(instr)
 		if err != nil {
 			println(err.String())
 			os.Exit(-1)
@@ -298,10 +301,6 @@ func main() {
 			root = filepath.Clean(root + "/")
 			if *recursive && !strings.HasSuffix(g.glob, "/") {
 				g.glob += "/"
-			}
-			// FIXME: go should treat UNC path correctly.
-			if syscall.OS == "windows" && len(root) > 2 && g.glob[0:1] != `\\` {
-				root = `\` + root
 			}
 			filepath.Walk(root, g, nil)
 		}
