@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-const version = "0.7"
+const version = "0.8"
 
 var encodings = []string{
 	"iso-2022-jp-3",
