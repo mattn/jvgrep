@@ -28,72 +28,7 @@ var encodings = []string{
 	"cp932",
 }
 
-type grepper struct {
-	glob    string
-	pattern interface{}
-	ere     *regexp.Regexp
-	oc      *iconv.Iconv
-}
-
-func (v *grepper) VisitDir(dir string, f *os.FileInfo) bool {
-	if dir == "." || *recursive {
-		return true
-	}
-	dirmask, _ := filepath.Split(v.glob)
-	dir = filepath.ToSlash(dir)
-
-	mi := strings.Split(dirmask, "/")
-	if len(mi) == 2 && mi[0] == "**" {
-		if m, e := filepath.Match(dirmask, dir); e != nil || m == false {
-			return true
-		}
-	}
-	for i, d := range strings.Split(dir, "/") {
-		if len(mi) <= i {
-			break
-		}
-		if m, e := filepath.Match(mi[i], d); e != nil || m == false {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (v *grepper) VisitFile(path string, f *os.FileInfo) {
-	if v.ere != nil && v.ere.MatchString(path) {
-		return
-	}
-	dirmask, filemask := filepath.Split(v.glob)
-	dir, file := filepath.Split(path)
-
-	dirmask = filepath.ToSlash(dirmask)
-	if dirmask == "**/" || *recursive {
-		dir = dirmask
-	} else {
-		dir = filepath.ToSlash(dir)
-	}
-	if *recursive && filemask == "" {
-		filemask = "*"
-	}
-
-	dm, e := filepath.Match(dirmask, dir)
-	if e != nil {
-		return
-	}
-	fm, e := filepath.Match(filemask, file)
-	if e != nil {
-		return
-	}
-	if dm && fm {
-		if *verbose {
-			println("search:", path)
-		}
-		v.Grep(filepath.ToSlash(path))
-	}
-}
-
-func (v *grepper) Grep(input interface{}) {
+func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 	var f []byte
 	var path = ""
 	var ok bool
@@ -124,11 +59,11 @@ func (v *grepper) Grep(input interface{}) {
 				break
 			}
 			var match bool
-			if re, ok := v.pattern.(*regexp.Regexp); ok {
+			if re, ok := pattern.(*regexp.Regexp); ok {
 				if len(re.FindAllIndex(t, 1)) > 0 {
 					match = true
 				}
-			} else if s, ok := v.pattern.(string); ok {
+			} else if s, ok := pattern.(string); ok {
 				if *ignorecase {
 					if strings.Index(strings.ToLower(string(t)),
 						strings.ToLower(s)) > -1 {
@@ -151,7 +86,7 @@ func (v *grepper) Grep(input interface{}) {
 				did = true
 				break
 			}
-			o, err := v.oc.ConvBytes(t)
+			o, err := oc.ConvBytes(t)
 			if err != nil {
 				o = line
 			}
@@ -221,7 +156,7 @@ func main() {
 	} else {
 		// TODO: ignorecase
 		if *ignorecase {
-			instr = "(?i:" + instr + ")";
+			instr = "(?i:" + instr + ")"
 		}
 		pattern, err = regexp.Compile(instr)
 		if err != nil {
@@ -263,46 +198,102 @@ func main() {
 	}()
 
 	if flag.NArg() == 1 && argindex != 0 {
-		g := &grepper{"", pattern, ere, oc}
-		g.Grep(os.Stdin)
-	} else {
-		for _, arg := range flag.Args()[argindex:] {
-			g := &grepper{filepath.ToSlash(arg), pattern, ere, oc}
+		Grep(pattern, os.Stdin, oc)
+		return
+	}
 
-			root := ""
-			for n, i := range strings.Split(g.glob, "/") {
-				if strings.Index(i, "*") != -1 {
-					break
-				}
-				if n == 0 && i == "~" {
-					if syscall.OS == "windows" {
-						i = os.Getenv("USERPROFILE")
-					} else {
-						i = os.Getenv("HOME")
-					}
-				}
-
-				root = filepath.Join(root, i)
-				if n == 0 {
-					if syscall.OS == "windows" && filepath.VolumeName(i) != "" {
-						root = i + "/"
-					} else if len(root) == 0 {
-						root = "/"
-					}
-				}
+	root := ""
+	glob := ""
+	for _, arg := range flag.Args()[argindex:] {
+		root = ""
+		glob = filepath.ToSlash(arg)
+		for n, i := range strings.Split(glob, "/") {
+			if strings.Index(i, "*") != -1 {
+				break
 			}
-			if arg != root {
-				if root == "" {
-					root = "."
+			if n == 0 && i == "~" {
+				if syscall.OS == "windows" {
+					i = os.Getenv("USERPROFILE")
 				} else {
-					root += "/"
+					i = os.Getenv("HOME")
 				}
 			}
-			root = filepath.Clean(root + "/")
-			if *recursive && !strings.HasSuffix(g.glob, "/") {
-				g.glob += "/"
+
+			root = filepath.Join(root, i)
+			if n == 0 {
+				if syscall.OS == "windows" && filepath.VolumeName(i) != "" {
+					root = i + "/"
+				} else if len(root) == 0 {
+					root = "/"
+				}
 			}
-			filepath.Walk(root, g, nil)
 		}
+		if arg != root {
+			if root == "" {
+				root = "."
+			} else {
+				root += "/"
+			}
+		}
+		root = filepath.Clean(root + "/")
+		if *recursive && !strings.HasSuffix(glob, "/") {
+			glob += "/"
+		}
+		filepath.Walk(root, func(path string, info *os.FileInfo, err os.Error) os.Error {
+			if info.IsDirectory() {
+				if path == "." || *recursive {
+					return nil
+				}
+				dirmask, _ := filepath.Split(glob)
+				dir := filepath.ToSlash(path)
+
+				mi := strings.Split(dirmask, "/")
+				if len(mi) == 2 && mi[0] == "**" {
+					if m, e := filepath.Match(dirmask, dir); e != nil || m == false {
+						return nil
+					}
+				}
+				for i, d := range strings.Split(dir, "/") {
+					if len(mi) <= i {
+						break
+					}
+					if m, e := filepath.Match(mi[i], d); e != nil || m == false {
+						return filepath.SkipDir
+					}
+				}
+			}
+
+			if ere != nil && ere.MatchString(path) {
+				return nil
+			}
+			dirmask, filemask := filepath.Split(glob)
+			dir, file := filepath.Split(path)
+
+			dirmask = filepath.ToSlash(dirmask)
+			if dirmask == "**/" || *recursive {
+				dir = dirmask
+			} else {
+				dir = filepath.ToSlash(dir)
+			}
+			if *recursive && filemask == "" {
+				filemask = "*"
+			}
+
+			dm, e := filepath.Match(dirmask, dir)
+			if e != nil {
+				return nil
+			}
+			fm, e := filepath.Match(filemask, file)
+			if e != nil {
+				return nil
+			}
+			if dm && fm {
+				if *verbose {
+					println("search:", path)
+				}
+				Grep(pattern, filepath.ToSlash(path), oc)
+			}
+			return nil
+		})
 	}
 }
