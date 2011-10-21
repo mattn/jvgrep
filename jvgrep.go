@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"exp/regexp"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
