@@ -86,8 +86,13 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 				did = true
 				break
 			}
-			o, err := oc.ConvBytes(t)
-			if err != nil {
+			var o []byte
+			if oc != nil {
+				o, err = oc.ConvBytes(t)
+				if err != nil {
+					o = line
+				}
+			} else {
 				o = line
 			}
 			fmt.Printf("%s:%d:%s\n", path, n+1, o)
@@ -111,6 +116,7 @@ var list = flag.Bool("l", false, "listing files")
 var recursive = flag.Bool("R", false, "recursive")
 var ver = flag.Bool("V", false, "version")
 var verbose = flag.Bool("S", false, "verbose")
+var utf8 = flag.Bool("8", false, "output utf8")
 
 func main() {
 	flag.Usage = func() {
@@ -187,9 +193,12 @@ func main() {
 		os.Setenv("ICONV_DLL", "jvgrep-iconv.dll")
 	}
 
-	oc, err := iconv.Open("char", "utf-8")
-	if err != nil {
-		oc, err = iconv.Open("utf-8", "utf-8")
+	var oc *iconv.Iconv
+	if !*utf8 {
+		oc, err = iconv.Open("char", "utf-8")
+		if err != nil {
+			oc, err = iconv.Open("utf-8", "utf-8")
+		}
 	}
 	defer func() {
 		if oc != nil {
