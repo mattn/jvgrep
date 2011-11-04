@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-const version = "0.9"
+const version = "1.0"
 
 var encodings = []string{
 	"iso-2022-jp-3",
@@ -33,7 +33,7 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 	var path = ""
 	var ok bool
 	var stdin *os.File
-	var err os.Error
+	var err error
 
 	if path, ok = input.(string); ok {
 		f, err = ioutil.ReadFile(path)
@@ -140,7 +140,7 @@ func main() {
 	if flag.NArg() == 0 {
 		flag.Usage()
 	}
-	var err os.Error
+	var err error
 	var errs *string
 	var pattern interface{}
 
@@ -149,7 +149,7 @@ func main() {
 	if len(*infile) > 0 {
 		b, err := ioutil.ReadFile(*infile)
 		if err != nil {
-			println(err.String())
+			println(err.Error())
 			os.Exit(-1)
 		}
 		instr = strings.TrimSpace(string(b))
@@ -166,7 +166,7 @@ func main() {
 		}
 		pattern, err = regexp.Compile(instr)
 		if err != nil {
-			println(err.String())
+			println(err.Error())
 			os.Exit(-1)
 		}
 	}
@@ -175,7 +175,7 @@ func main() {
 	if *exclude != "" {
 		ere, err = regexp.Compile(*exclude)
 		if errs != nil {
-			println(err.String())
+			println(err.Error())
 			os.Exit(-1)
 		}
 	}
@@ -248,7 +248,7 @@ func main() {
 		if *recursive && !strings.HasSuffix(glob, "/") {
 			glob += "/"
 		}
-		filepath.Walk(root, func(path string, info *os.FileInfo, err os.Error) os.Error {
+		filepath.Walk(root, func(path string, info *os.FileInfo, err error) error {
 			if info.IsDirectory() {
 				if path == "." || *recursive {
 					return nil
