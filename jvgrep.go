@@ -216,6 +216,7 @@ func main() {
 	for _, arg := range flag.Args()[argindex:] {
 		globmask = ""
 		root := ""
+		arg = strings.Trim(arg, `"`)
 		for n, i := range strings.Split(filepath.ToSlash(arg), "/") {
 			if root == "" &&  strings.Index(i, "*") != -1 {
 				root = filepath.ToSlash(globmask)
@@ -225,7 +226,7 @@ func main() {
 					i = os.Getenv("USERPROFILE")
 				}
 				if envre.MatchString(i) {
-					i = os.Getenv(i[1:])
+					i = strings.Trim(os.Getenv(i[1:]), `"`)
 				}
 			}
 
