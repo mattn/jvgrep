@@ -211,6 +211,7 @@ func main() {
 		return
 	}
 
+	envre := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 	globmask := ""
 	for _, arg := range flag.Args()[argindex:] {
 		globmask = ""
@@ -219,11 +220,12 @@ func main() {
 			if root == "" &&  strings.Index(i, "*") != -1 {
 				root = filepath.ToSlash(globmask)
 			}
-			if n == 0 && i == "~" {
-				if syscall.OS == "windows" {
+			if syscall.OS == "windows" {
+				if n == 0 && i == "~" {
 					i = os.Getenv("USERPROFILE")
-				} else {
-					i = os.Getenv("HOME")
+				}
+				if envre.MatchString(i) {
+					i = os.Getenv(i[1:])
 				}
 			}
 
