@@ -255,11 +255,15 @@ func main() {
 				} else {
 					filemask += "[^/]*"
 				}
-				if dirmask == "" {
+			} else {
+				if cc[i] > 255 {
+					filemask += string(cc[i])
+				} else {
+					filemask += fmt.Sprintf("[\\x%x]", cc[i])
+				}
+				if cc[i] == '/' && dirmask == "" && strings.Index(filemask, "*") != -1 {
 					dirmask = filemask
 				}
-			} else {
-				filemask += fmt.Sprintf("[\\x%x]", cc[i])
 			}
 		}
 		if dirmask == "" {
@@ -284,7 +288,7 @@ func main() {
 			}
 
 			if info.IsDir() {
-				if path == "." || *recursive || len(path) <= len(root) || dre.MatchString(path) {
+				if path == "." || *recursive || len(path) <= len(root) || dre.MatchString(path + "/") {
 					return nil
 				}
 				return filepath.SkipDir
