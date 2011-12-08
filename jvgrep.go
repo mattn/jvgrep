@@ -160,7 +160,6 @@ func main() {
 	if *fixed {
 		pattern = instr
 	} else {
-		// TODO: ignorecase
 		if *ignorecase {
 			instr = "(?i:" + instr + ")"
 		}
@@ -211,14 +210,13 @@ func main() {
 		return
 	}
 
-	root := ""
-	glob := ""
+	globmask := ""
 	for _, arg := range flag.Args()[argindex:] {
-		root = ""
-		glob = filepath.ToSlash(arg)
-		for n, i := range strings.Split(glob, "/") {
-			if strings.Index(i, "*") != -1 {
-				break
+		globmask = ""
+		root := ""
+		for n, i := range strings.Split(filepath.ToSlash(arg), "/") {
+			if root == "" &&  strings.Index(i, "*") != -1 {
+				root = filepath.ToSlash(globmask)
 			}
 			if n == 0 && i == "~" {
 				if syscall.OS == "windows" {
@@ -228,79 +226,74 @@ func main() {
 				}
 			}
 
-			root = filepath.Join(root, i)
+			globmask = filepath.Join(globmask, i)
 			if n == 0 {
 				if syscall.OS == "windows" && filepath.VolumeName(i) != "" {
-					root = i + "/"
-				} else if len(root) == 0 {
-					root = "/"
+					globmask = i + "/"
+				} else if len(globmask) == 0 {
+					globmask = "/"
 				}
 			}
 		}
-		if arg != root {
-			if root == "" {
-				root = "."
-			} else {
-				root += "/"
-			}
+		if globmask == "" {
+			globmask = "."
 		}
-		root = filepath.Clean(root + "/")
-		if *recursive && !strings.HasSuffix(glob, "/") {
-			glob += "/"
+		globmask = filepath.ToSlash(filepath.Clean(globmask))
+		if *recursive {
+			globmask += "/"
 		}
-		filepath.Walk(root, func(path string, info *os.FileInfo, err error) error {
-			if info.IsDirectory() {
-				if path == "." || *recursive {
-					return nil
-				}
-				dirmask, _ := filepath.Split(glob)
-				dir := filepath.ToSlash(path)
 
-				mi := strings.Split(dirmask, "/")
-				if len(mi) == 2 && mi[0] == "**" {
-					if m, e := filepath.Match(dirmask, dir); e != nil || m == false {
-						return nil
-					}
+		cc := []int(globmask)
+		dirmask := ""
+		filemask := ""
+		for i := 0; i < len(cc); i++ {
+			if cc[i] == '*' {
+				if i < len(cc) - 2 && cc[i+1] == '*' && cc[i+2] != '*' {
+					filemask += ".*"
+					i++
+				} else {
+					filemask += "[^/]*"
 				}
-				for i, d := range strings.Split(dir, "/") {
-					if len(mi) <= i {
-						break
-					}
-					if m, e := filepath.Match(mi[i], d); e != nil || m == false {
-						return filepath.SkipDir
-					}
+				if dirmask == "" {
+					dirmask = filemask
 				}
+			} else {
+				filemask += fmt.Sprintf("[\\x%x]", cc[i])
 			}
+		}
+		if dirmask == "" {
+			dirmask = filemask
+		}
+		if syscall.OS == "windows" || syscall.OS == "darwin" {
+			dirmask = "(?i:" + dirmask + ")"
+			filemask = "(?i:" + filemask + ")"
+		}
+		dre := regexp.MustCompile("^" + dirmask + "$")
+		fre := regexp.MustCompile("^" + filemask + "$")
+
+		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if info == nil {
+				return err
+			}
+
+			path = filepath.ToSlash(path)
 
 			if ere != nil && ere.MatchString(path) {
 				return nil
 			}
-			dirmask, filemask := filepath.Split(glob)
-			dir, file := filepath.Split(path)
 
-			dirmask = filepath.ToSlash(dirmask)
-			if dirmask == "**/" || *recursive {
-				dir = dirmask
-			} else {
-				dir = filepath.ToSlash(dir)
-			}
-			if *recursive && filemask == "" {
-				filemask = "*"
+			if info.IsDir() {
+				if path == "." || *recursive || len(path) <= len(root) || dre.MatchString(path) {
+					return nil
+				}
+				return filepath.SkipDir
 			}
 
-			dm, e := filepath.Match(dirmask, dir)
-			if e != nil {
-				return nil
-			}
-			fm, e := filepath.Match(filemask, file)
-			if e != nil {
-				return nil
-			}
-			if dm && fm {
+			if fre.MatchString(path) {
 				if *verbose {
 					println("search:", path)
 				}
-				Grep(pattern, filepath.ToSlash(path), oc)
+				Grep(pattern, path, oc)
 			}
 			return nil
 		})
