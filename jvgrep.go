@@ -28,6 +28,16 @@ var encodings = []string{
 	"cp932",
 }
 
+func printline(oc *iconv.Iconv, s string) {
+	if oc != nil {
+		ss, err := oc.Conv(s)
+		if err == nil {
+			s = ss
+		}
+	}
+	fmt.Println(s)
+}
+
 func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 	var f []byte
 	var path = ""
@@ -82,20 +92,11 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 				println("found("+enc+"):", path)
 			}
 			if *list {
-				fmt.Println(path)
+				printline(oc, path)
 				did = true
 				break
 			}
-			var o []byte
-			if oc != nil {
-				o, err = oc.ConvBytes(t)
-				if err != nil {
-					o = line
-				}
-			} else {
-				o = line
-			}
-			fmt.Printf("%s:%d:%s\n", path, n+1, o)
+			printline(oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t)))
 			did = true
 		}
 		ic.Close()
