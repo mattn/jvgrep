@@ -229,7 +229,7 @@ func main() {
 					i = os.Getenv("USERPROFILE")
 				}
 				if envre.MatchString(i) {
-					i = strings.Trim(os.Getenv(i[1:]), `"`)
+					i = strings.Trim(strings.Trim(os.Getenv(i[1:]), "()"), `"`)
 				}
 			}
 
