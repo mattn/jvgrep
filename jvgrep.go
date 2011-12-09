@@ -25,6 +25,8 @@ var encodings = []string{
 	"euc-jp",
 	"eucjp-ms",
 	"cp932",
+	"utf-16le",
+	"utf-16be",
 }
 
 func printline(oc *iconv.Iconv, s string) {
@@ -62,9 +64,11 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 			continue
 		}
 		did := false
+		conv_error := false
 		for n, line := range bytes.Split(f, []byte{'\n'}) {
 			t, err := ic.ConvBytes(line)
 			if err != nil {
+				conv_error = true
 				break
 			}
 			var match bool
@@ -100,6 +104,9 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 		}
 		ic.Close()
 		runtime.GC()
+		if !conv_error {
+			break
+		}
 		if did {
 			break
 		}
