@@ -259,6 +259,13 @@ func main() {
 		if *recursive {
 			globmask += "/"
 		}
+		if syscall.OS == "windows" {
+			// keep double backslask windows UNC.
+			if len(arg) > 2 && (arg[0:2] == `\\` || arg[0:2] == `//`) {
+				root = "/" + root
+				globmask = "/" + globmask
+			}
+		}
 
 		cc := []int(globmask)
 		dirmask := ""
