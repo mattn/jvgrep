@@ -218,8 +218,12 @@ func main() {
 		root := ""
 		arg = strings.Trim(arg, `"`)
 		for n, i := range strings.Split(filepath.ToSlash(arg), "/") {
-			if root == "" &&  strings.Index(i, "*") != -1 {
-				root = filepath.ToSlash(globmask)
+			if root == "" && strings.Index(i, "*") != -1 {
+				if globmask == "" {
+					root = "."
+				} else {
+					root = filepath.ToSlash(globmask)
+				}
 			}
 			if syscall.OS == "windows" {
 				if n == 0 && i == "~" {
@@ -279,6 +283,8 @@ func main() {
 		dre := regexp.MustCompile("^" + dirmask + "$")
 		fre := regexp.MustCompile("^" + filemask + "$")
 
+		root = filepath.Clean(root)
+
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if info == nil {
 				return err
@@ -287,6 +293,9 @@ func main() {
 			path = filepath.ToSlash(path)
 
 			if ere != nil && ere.MatchString(path) {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
 				return nil
 			}
 
