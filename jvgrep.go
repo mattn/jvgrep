@@ -59,6 +59,9 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 		path = "stdin"
 	}
 	for _, enc := range encodings {
+		if *verbose {
+			println("trying("+enc+"):", path)
+		}
 		ic, err := iconv.Open("utf-8", enc)
 		if err != nil {
 			continue
@@ -104,7 +107,7 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 		}
 		ic.Close()
 		runtime.GC()
-		if !conv_error {
+		if !conv_error && enc != "utf-16le" {
 			break
 		}
 		if did {
