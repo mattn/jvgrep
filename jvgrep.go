@@ -17,6 +17,7 @@ import (
 const version = "1.1"
 
 var encodings = []string{
+	"",
 	"iso-2022-jp-3",
 	"iso-2022-jp",
 	"euc-jisx0213",
@@ -25,8 +26,8 @@ var encodings = []string{
 	"euc-jp",
 	"eucjp-ms",
 	"cp932",
-	//"utf-16le",
-	//"utf-16be",
+	"utf-16le",
+	"utf-16be",
 }
 
 func printline(oc *iconv.Iconv, s string) {
@@ -45,6 +46,7 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 	var ok bool
 	var stdin *os.File
 	var err error
+	var ic *iconv.Iconv
 
 	if path, ok = input.(string); ok {
 		f, err = ioutil.ReadFile(path)
@@ -62,17 +64,31 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 		if *verbose {
 			println("trying("+enc+"):", path)
 		}
-		ic, err := iconv.Open("utf-8", enc)
-		if err != nil {
-			continue
+		if enc != "" {
+			ic, err = iconv.Open("utf-8", enc)
+			if err != nil {
+				continue
+			}
+		} else {
+			ic = nil
 		}
 		did := false
 		conv_error := false
+		var t []byte
+		var l int
 		for n, line := range bytes.Split(f, []byte{'\n'}) {
-			t, err := ic.ConvBytes(line)
-			if err != nil {
-				conv_error = true
-				break
+			l = len(line)
+			if l == 0 {
+				continue
+			}
+			if ic == nil || (enc == "utf-16le" && l < 4) {
+				t = []byte(line)
+			} else {
+				t, err = ic.ConvBytes(line)
+				if err != nil {
+					conv_error = true
+					break
+				}
 			}
 			var match bool
 			if re, ok := pattern.(*regexp.Regexp); ok {
@@ -105,9 +121,11 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 			printline(oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t)))
 			did = true
 		}
-		ic.Close()
+		if ic != nil {
+			ic.Close()
+		}
 		runtime.GC()
-		if !conv_error && enc != "utf-16le" {
+		if !conv_error && enc != "utf-16le" && enc != "utf-16be" {
 			break
 		}
 		if did {
@@ -137,7 +155,9 @@ func main() {
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "  Supported Encodings:")
 		for _, enc := range encodings {
-			fmt.Fprintln(os.Stderr, "    "+enc)
+			if enc != "" {
+				fmt.Fprintln(os.Stderr, "    "+enc)
+			}
 		}
 		os.Exit(-1)
 	}
