@@ -25,8 +25,8 @@ var encodings = []string{
 	"euc-jp",
 	"eucjp-ms",
 	"cp932",
-	"utf-16le",
-	"utf-16be",
+	//"utf-16le",
+	//"utf-16be",
 }
 
 func printline(oc *iconv.Iconv, s string) {
@@ -267,7 +267,7 @@ func main() {
 			}
 		}
 
-		cc := []int(globmask)
+		cc := []rune(globmask)
 		dirmask := ""
 		filemask := ""
 		for i := 0; i < len(cc); i++ {
