@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-const version = "1.1"
+const version = "1.2"
 
 var encodings = []string{
 	"",
@@ -131,7 +131,7 @@ func Grep(arg *GrepArg) {
 			ic.Close()
 		}
 		runtime.GC()
-		if !conv_error && enc != "utf-16le" && enc != "utf-16be" {
+		if !conv_error && enc != "" && enc != "utf-16le" && enc != "utf-16be" {
 			break
 		}
 		if did {
