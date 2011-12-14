@@ -30,6 +30,12 @@ var encodings = []string{
 	"utf-16be",
 }
 
+type GrepArg struct {
+	pattern interface{}
+	input interface{}
+	oc *iconv.Iconv
+}
+
 func printline(oc *iconv.Iconv, s string) {
 	if oc != nil {
 		ss, err := oc.Conv(s)
@@ -40,7 +46,7 @@ func printline(oc *iconv.Iconv, s string) {
 	fmt.Println(s)
 }
 
-func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
+func Grep(arg *GrepArg) {
 	var f []byte
 	var path = ""
 	var ok bool
@@ -48,12 +54,12 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 	var err error
 	var ic *iconv.Iconv
 
-	if path, ok = input.(string); ok {
+	if path, ok = arg.input.(string); ok {
 		f, err = ioutil.ReadFile(path)
 		if err != nil {
 			return
 		}
-	} else if stdin, ok = input.(*os.File); ok {
+	} else if stdin, ok = arg.input.(*os.File); ok {
 		f, err = ioutil.ReadAll(stdin)
 		if err != nil {
 			return
@@ -91,11 +97,11 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 				}
 			}
 			var match bool
-			if re, ok := pattern.(*regexp.Regexp); ok {
+			if re, ok := arg.pattern.(*regexp.Regexp); ok {
 				if len(re.FindAllIndex(t, 1)) > 0 {
 					match = true
 				}
-			} else if s, ok := pattern.(string); ok {
+			} else if s, ok := arg.pattern.(string); ok {
 				if *ignorecase {
 					if strings.Index(strings.ToLower(string(t)),
 						strings.ToLower(s)) > -1 {
@@ -114,11 +120,11 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 				println("found("+enc+"):", path)
 			}
 			if *list {
-				printline(oc, path)
+				printline(arg.oc, path)
 				did = true
 				break
 			}
-			printline(oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t)))
+			printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t)))
 			did = true
 		}
 		if ic != nil {
@@ -132,6 +138,17 @@ func Grep(pattern interface{}, input interface{}, oc *iconv.Iconv) {
 			break
 		}
 	}
+}
+
+func GoGrep(ch chan *GrepArg, done chan int) {
+	for {
+		arg := <-ch
+		if arg == nil {
+			break
+		}
+		Grep(arg)
+	}
+	done <- 1
 }
 
 var encs = flag.String("enc", "", "encodings: comma separated")
@@ -236,12 +253,16 @@ func main() {
 	}()
 
 	if flag.NArg() == 1 && argindex != 0 {
-		Grep(pattern, os.Stdin, oc)
+		Grep(&GrepArg{pattern, os.Stdin, oc})
 		return
 	}
 
 	envre := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 	globmask := ""
+
+	ch := make(chan *GrepArg)
+	done := make(chan int)
+	go GoGrep(ch, done)
 	for _, arg := range flag.Args()[argindex:] {
 		globmask = ""
 		root := ""
@@ -346,9 +367,11 @@ func main() {
 				if *verbose {
 					println("search:", path)
 				}
-				Grep(pattern, path, oc)
+				ch <- &GrepArg{pattern, path, oc}
 			}
 			return nil
 		})
+		ch <- nil
+		<-done
 	}
 }
