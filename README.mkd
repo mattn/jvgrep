@@ -39,6 +39,8 @@ Usage
         euc-jp
         eucjp-ms
         cp932
+        utf-16be
+        utf-16le
 
 for example,
 
@@ -60,6 +62,8 @@ Supported Encodings
 * euc-jp
 * eucjp-ms
 * cp932
+* utf-16be (support characters in utf-8)
+* utf-16le (support characters in utf-8)
 
 Vim Enhancement
 ---------------
