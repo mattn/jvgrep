@@ -17,7 +17,7 @@ import (
 const version = "1.2"
 
 var encodings = []string{
-	"",
+	"ascii",
 	"iso-2022-jp-3",
 	"iso-2022-jp",
 	"euc-jisx0213",
@@ -28,6 +28,7 @@ var encodings = []string{
 	"cp932",
 	"utf-16le",
 	"utf-16be",
+	"",
 }
 
 type GrepArg struct {
@@ -75,19 +76,18 @@ func Grep(arg *GrepArg) {
 			if err != nil {
 				continue
 			}
-		} else {
-			ic = nil
 		}
 		did := false
 		conv_error := false
-		var t []byte
-		var l int
-		for n, line := range bytes.Split(f, []byte{'\n'}) {
+		var t, line []byte
+		var n, l int
+		lines := bytes.Split(f, []byte{'\n'})
+		for n, line = range lines {
 			l = len(line)
 			if l == 0 {
 				continue
 			}
-			if ic == nil || (enc == "utf-16le" && l < 4) {
+			if ic == nil || enc == "" || ((enc == "utf-16be" || enc == "utf-16le") && l < 4) {
 				t = []byte(line)
 			} else {
 				t, err = ic.ConvBytes(line)
@@ -131,10 +131,10 @@ func Grep(arg *GrepArg) {
 			ic.Close()
 		}
 		runtime.GC()
-		if !conv_error && enc != "" && enc != "utf-16le" && enc != "utf-16be" {
+		if !conv_error {
 			break
 		}
-		if did {
+		if did || n == len(lines) {
 			break
 		}
 	}
