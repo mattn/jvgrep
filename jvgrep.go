@@ -275,13 +275,15 @@ func main() {
 					root = filepath.ToSlash(globmask)
 				}
 			}
-			if syscall.OS == "windows" {
-				if n == 0 && i == "~" {
+			if n == 0 && i == "~" {
+				if syscall.OS == "windows" {
 					i = os.Getenv("USERPROFILE")
+				} else {
+					i = os.Getenv("HOME")
 				}
-				if envre.MatchString(i) {
-					i = strings.Trim(strings.Trim(os.Getenv(i[1:]), "()"), `"`)
-				}
+			}
+			if envre.MatchString(i) {
+				i = strings.Trim(strings.Trim(os.Getenv(i[1:]), "()"), `"`)
 			}
 
 			globmask = filepath.Join(globmask, i)
