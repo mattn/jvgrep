@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-const version = "1.3"
+const version = "1.4"
 
 var encodings = []string{
 	"latin-1",
@@ -35,6 +35,7 @@ type GrepArg struct {
 	pattern interface{}
 	input interface{}
 	oc *iconv.Iconv
+	single bool
 }
 
 func printline(oc *iconv.Iconv, s string) {
@@ -124,7 +125,11 @@ func Grep(arg *GrepArg) {
 				did = true
 				break
 			}
-			printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t)))
+			if arg.single {
+				printline(arg.oc, string(t))
+			} else {
+				printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t)))
+			}
 			did = true
 		}
 		if ic != nil {
@@ -253,7 +258,7 @@ func main() {
 	}()
 
 	if flag.NArg() == 1 && argindex != 0 {
-		Grep(&GrepArg{pattern, os.Stdin, oc})
+		Grep(&GrepArg{pattern, os.Stdin, oc, true})
 		return
 	}
 
@@ -369,7 +374,7 @@ func main() {
 				if *verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, oc}
+				ch <- &GrepArg{pattern, path, oc, false}
 			}
 			return nil
 		})
