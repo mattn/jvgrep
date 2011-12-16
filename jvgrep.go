@@ -38,14 +38,16 @@ type GrepArg struct {
 	single bool
 }
 
-func printline(oc *iconv.Iconv, s string) {
+func printline(oc *iconv.Iconv, s string) bool {
 	if oc != nil {
 		ss, err := oc.Conv(s)
-		if err == nil {
-			s = ss
+		if err != nil {
+			return false
 		}
+		s = ss
 	}
 	fmt.Println(s)
+	return true
 }
 
 func Grep(arg *GrepArg) {
@@ -126,9 +128,17 @@ func Grep(arg *GrepArg) {
 				break
 			}
 			if arg.single && !*number {
-				printline(arg.oc, string(t))
+				if !printline(arg.oc, string(t)) {
+					fmt.Printf("matched binary file: %s.", path)
+					did = true
+					break
+				}
 			} else {
-				printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t)))
+				if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t))) {
+					fmt.Printf("matched binary file: %s", path)
+					did = true
+					break
+				}
 			}
 			did = true
 		}
