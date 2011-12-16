@@ -125,7 +125,7 @@ func Grep(arg *GrepArg) {
 				did = true
 				break
 			}
-			if arg.single {
+			if arg.single && !*number {
 				printline(arg.oc, string(t))
 			} else {
 				printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t)))
@@ -161,8 +161,9 @@ var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
 var fixed = flag.Bool("F", false, "fixed match")
 var ignorecase = flag.Bool("i", false, "ignore case(currently fixed only)")
 var infile = flag.String("f", "", "obtain pattern file")
-var invert = flag.Bool("v", false, "invert match")
-var list = flag.Bool("l", false, "listing files")
+var invert = flag.Bool("v", false, "select non-matching lines")
+var list = flag.Bool("l", false, "print only names of FILEs containing matches")
+var number = flag.Bool("n", false, "print line number with output lines")
 var recursive = flag.Bool("R", false, "recursive")
 var ver = flag.Bool("V", false, "version")
 var verbose = flag.Bool("S", false, "verbose")
