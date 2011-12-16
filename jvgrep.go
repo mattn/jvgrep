@@ -14,10 +14,10 @@ import (
 	"syscall"
 )
 
-const version = "1.2"
+const version = "1.3"
 
 var encodings = []string{
-	"ascii",
+	"latin-1",
 	"iso-2022-jp-3",
 	"iso-2022-jp",
 	"euc-jisx0213",
