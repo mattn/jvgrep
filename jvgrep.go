@@ -338,18 +338,25 @@ func main() {
 					filemask += "[^/]*"
 				}
 			} else {
-				if cc[i] > 255 {
-					filemask += string(cc[i])
+				c := cc[i]
+				if c == '/' || ('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || 255 < c {
+					filemask += string(c)
 				} else {
-					filemask += fmt.Sprintf("[\\x%x]", cc[i])
+					filemask += fmt.Sprintf("[\\x%x]", c)
 				}
-				if cc[i] == '/' && dirmask == "" && strings.Index(filemask, "*") != -1 {
+				if c == '/' && dirmask == "" && strings.Index(filemask, "*") != -1 {
 					dirmask = filemask
 				}
 			}
 		}
 		if dirmask == "" {
 			dirmask = filemask
+		}
+		if len(filemask) > 0 && filemask[len(filemask)-1] == '/' {
+			if root == "" {
+				root = filemask
+			}
+			filemask += "[^/]*"
 		}
 		if syscall.OS == "windows" || syscall.OS == "darwin" {
 			dirmask = "(?i:" + dirmask + ")"
@@ -389,7 +396,7 @@ func main() {
 			}
 			return nil
 		})
-		ch <- nil
-		<-done
 	}
+	ch <- nil
+	<-done
 }
