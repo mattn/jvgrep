@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-const version = "1.4"
+const version = "1.5"
 
 var encodings = []string{
 	"latin-1",
@@ -70,7 +70,14 @@ func Grep(arg *GrepArg) {
 		}
 		path = "stdin"
 	}
-	for _, enc := range encodings {
+	encs := encodings
+	if bytes.IndexFunc(
+		f, func(r rune) bool {
+			return r < 0x9
+		}) != -1 {
+		encs = []string{""}
+	}
+	for _, enc := range encs {
 		if *verbose {
 			println("trying("+enc+"):", path)
 		}
@@ -129,13 +136,13 @@ func Grep(arg *GrepArg) {
 			}
 			if arg.single && !*number {
 				if !printline(arg.oc, string(t)) {
-					fmt.Printf("matched binary file: %s.", path)
+					fmt.Printf("matched binary file: %s\n", path)
 					did = true
 					break
 				}
 			} else {
 				if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t))) {
-					fmt.Printf("matched binary file: %s", path)
+					fmt.Printf("matched binary file: %s\n", path)
 					did = true
 					break
 				}
@@ -331,9 +338,9 @@ func main() {
 		filemask := ""
 		for i := 0; i < len(cc); i++ {
 			if cc[i] == '*' {
-				if i < len(cc) - 2 && cc[i+1] == '*' && cc[i+2] != '*' {
-					filemask += ".*"
-					i++
+				if i < len(cc) - 2 && cc[i+1] == '*' && cc[i+2] == '/' {
+					filemask += "(.*/)?"
+					i += 2
 				} else {
 					filemask += "[^/]*"
 				}
