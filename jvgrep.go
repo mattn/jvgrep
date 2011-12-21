@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"github.com/mattn/go-iconv"
 	"io/ioutil"
@@ -70,15 +69,15 @@ func Grep(arg *GrepArg) {
 		}
 		path = "stdin"
 	}
-	encs := encodings
+	fencs := encodings
 	if bytes.IndexFunc(
 		f, func(r rune) bool {
 			return r < 0x9
 		}) != -1 {
-		encs = []string{""}
+		fencs = []string{""}
 	}
-	for _, enc := range encs {
-		if *verbose {
+	for _, enc := range fencs {
+		if verbose {
 			println("trying("+enc+"):", path)
 		}
 		if enc != "" {
@@ -112,7 +111,7 @@ func Grep(arg *GrepArg) {
 					match = true
 				}
 			} else if s, ok := arg.pattern.(string); ok {
-				if *ignorecase {
+				if ignorecase {
 					if strings.Index(strings.ToLower(string(t)),
 						strings.ToLower(s)) > -1 {
 						match = true
@@ -123,18 +122,18 @@ func Grep(arg *GrepArg) {
 					}
 				}
 			}
-			if (!*invert && !match) || (*invert && match) {
+			if (!invert && !match) || (invert && match) {
 				continue
 			}
-			if *verbose {
+			if verbose {
 				println("found("+enc+"):", path)
 			}
-			if *list {
+			if list {
 				printline(arg.oc, path)
 				did = true
 				break
 			}
-			if arg.single && !*number {
+			if arg.single && !number {
 				if !printline(arg.oc, string(t)) {
 					fmt.Printf("matched binary file: %s\n", path)
 					did = true
@@ -173,64 +172,122 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 	done <- 1
 }
 
-var encs = flag.String("enc", "", "encodings: comma separated")
-var exclude = flag.String("exclude", "", "exclude files: specify as regexp")
-var fixed = flag.Bool("F", false, "fixed match")
-var ignorecase = flag.Bool("i", false, "ignore case(currently fixed only)")
-var infile = flag.String("f", "", "obtain pattern file")
-var invert = flag.Bool("v", false, "select non-matching lines")
-var list = flag.Bool("l", false, "print only names of FILEs containing matches")
-var number = flag.Bool("n", false, "print line number with output lines")
-var recursive = flag.Bool("R", false, "recursive")
-var ver = flag.Bool("V", false, "version")
-var verbose = flag.Bool("S", false, "verbose")
-var utf8 = flag.Bool("8", false, "output utf8")
+var encs string
+var exclude string
+var fixed bool
+var ignorecase bool
+var infile string
+var invert bool
+var list bool
+var number bool
+var recursive bool
+var verbose bool
+var utf8 bool
+
+func usage() {
+	fmt.Fprintf(os.Stderr, `Usage: jvgrep [options] [pattern] [file...]
+  Version %s
+  -8             : output utf8
+  -F             : fixed match
+  -R             : recursive
+  -S             : verbose
+  -V             : version
+  -enc encodings : encodings: comma separated
+  -exclud regexp : exclude files: specify as regexp
+  -f file        : obtain pattern file
+  -i             : ignore case(currently fixed only)
+  -l             : print only names of FILEs containing matches
+  -n             : print line number with output lines
+  -v             : select non-matching lines`, version)
+	fmt.Println("Supported Encodings:")
+	fmt.Fprintln(os.Stderr, "  Supported Encodings:")
+	for _, enc := range encodings {
+		if enc != "" {
+			fmt.Fprintln(os.Stderr, "    "+enc)
+		}
+	}
+	os.Exit(-1)
+}
 
 func main() {
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: jvgrep [options] [pattern] [file...]\n")
-		fmt.Fprintf(os.Stderr, "  Version %s", version)
-		fmt.Fprintln(os.Stderr)
-		flag.PrintDefaults()
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, "  Supported Encodings:")
-		for _, enc := range encodings {
-			if enc != "" {
-				fmt.Fprintln(os.Stderr, "    "+enc)
-			}
-		}
-		os.Exit(-1)
-	}
-	flag.Parse()
+	var args []string
 
-	if *ver {
-		fmt.Fprintf(os.Stdout, "%s\n", version)
-		os.Exit(0)
+	argv := os.Args
+	argc := len(argv)
+	for n := 1; n < argc; n++ {
+		if len(argv[n]) > 0 && argv[n][0] == '-' {
+			switch argv[n][1] {
+			case '8':
+				utf8 = true
+			case 'F':
+				fixed = true
+			case 'R':
+				recursive = true
+			case 'S':
+				verbose = true
+			case 'i':
+				ignorecase = true
+			case 'l':
+				list = true
+			case 'n':
+				number = true
+			case 'v':
+				invert = true
+			case 'V':
+				fmt.Fprintf(os.Stdout, "%s\n", version)
+				os.Exit(0)
+			default:
+				usage()
+			}
+			if len(argv[n]) > 2 {
+				argv[n] = "-" + argv[n][2:]
+				n--
+			}
+		} else if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] == '-' {
+			if n == argc -1 {
+				usage()
+			}
+			switch argv[n] {
+			case "--enc":
+				encs = argv[n+1]
+			case "--exclude":
+				exclude = argv[n+1]
+			case "-f":
+				infile = argv[n+1]
+			default:
+				usage()
+			}
+			n++
+		} else {
+			args = append(args, argv[n])
+		}
 	}
-	if flag.NArg() == 0 {
-		flag.Usage()
+
+	if len(args) == 0 {
+		usage()
 	}
+
 	var err error
 	var errs *string
 	var pattern interface{}
 
 	instr := ""
 	argindex := 0
-	if len(*infile) > 0 {
-		b, err := ioutil.ReadFile(*infile)
+	if len(infile) > 0 {
+		b, err := ioutil.ReadFile(infile)
 		if err != nil {
 			println(err.Error())
 			os.Exit(-1)
 		}
 		instr = strings.TrimSpace(string(b))
 	} else {
-		instr = flag.Arg(0)
+		instr = args[0]
 		argindex = 1
 	}
-	if *fixed {
+	if fixed {
 		pattern = instr
 	} else {
-		if *ignorecase {
+		if ignorecase {
 			instr = "(?i:" + instr + ")"
 		}
 		pattern, err = regexp.Compile(instr)
@@ -241,15 +298,15 @@ func main() {
 	}
 
 	var ere *regexp.Regexp
-	if *exclude != "" {
-		ere, err = regexp.Compile(*exclude)
+	if exclude != "" {
+		ere, err = regexp.Compile(exclude)
 		if errs != nil {
 			println(err.Error())
 			os.Exit(-1)
 		}
 	}
-	if *encs != "" {
-		encodings = strings.Split(*encs, ",")
+	if encs != "" {
+		encodings = strings.Split(encs, ",")
 	} else {
 		enc_env := os.Getenv("JVGREP_ENCODINGS")
 		if enc_env != "" {
@@ -263,7 +320,7 @@ func main() {
 	}
 
 	var oc *iconv.Iconv
-	if !*utf8 {
+	if !utf8 {
 		oc, err = iconv.Open("char", "utf-8")
 		if err != nil {
 			oc, err = iconv.Open("utf-8", "utf-8")
@@ -275,7 +332,7 @@ func main() {
 		}
 	}()
 
-	if flag.NArg() == 1 && argindex != 0 {
+	if len(args) == 1 && argindex != 0 {
 		Grep(&GrepArg{pattern, os.Stdin, oc, true})
 		return
 	}
@@ -286,7 +343,7 @@ func main() {
 	ch := make(chan *GrepArg)
 	done := make(chan int)
 	go GoGrep(ch, done)
-	for _, arg := range flag.Args()[argindex:] {
+	for _, arg := range args[argindex:] {
 		globmask = ""
 		root := ""
 		arg = strings.Trim(arg, `"`)
@@ -322,7 +379,7 @@ func main() {
 			globmask = "."
 		}
 		globmask = filepath.ToSlash(filepath.Clean(globmask))
-		if *recursive {
+		if recursive {
 			globmask += "/"
 		}
 		if syscall.OS == "windows" {
@@ -389,14 +446,14 @@ func main() {
 			}
 
 			if info.IsDir() {
-				if path == "." || *recursive || len(path) <= len(root) || dre.MatchString(path + "/") {
+				if path == "." || recursive || len(path) <= len(root) || dre.MatchString(path + "/") {
 					return nil
 				}
 				return filepath.SkipDir
 			}
 
 			if fre.MatchString(path) {
-				if *verbose {
+				if verbose {
 					println("search:", path)
 				}
 				ch <- &GrepArg{pattern, path, oc, false}
