@@ -396,6 +396,7 @@ func main() {
 			if cc[i] == '*' {
 				if i < len(cc)-2 && cc[i+1] == '*' && cc[i+2] == '/' {
 					filemask += "(.*/)?"
+					dirmask = filemask
 					i += 2
 				} else {
 					filemask += "[^/]*"
