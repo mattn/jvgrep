@@ -10,10 +10,9 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"syscall"
 )
 
-const version = "1.5"
+const version = "1.6"
 
 var encodings = []string{
 	"latin-1",
@@ -32,10 +31,22 @@ var encodings = []string{
 
 type GrepArg struct {
 	pattern interface{}
-	input interface{}
-	oc *iconv.Iconv
-	single bool
+	input   interface{}
+	oc      *iconv.Iconv
+	single  bool
 }
+
+var encs string
+var exclude string
+var fixed bool
+var ignorecase bool
+var infile string
+var invert bool
+var list bool
+var number bool
+var recursive bool
+var verbose bool
+var utf8 bool
 
 func printline(oc *iconv.Iconv, s string) bool {
 	if oc != nil {
@@ -172,18 +183,6 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 	done <- 1
 }
 
-var encs string
-var exclude string
-var fixed bool
-var ignorecase bool
-var infile string
-var invert bool
-var list bool
-var number bool
-var recursive bool
-var verbose bool
-var utf8 bool
-
 func usage() {
 	fmt.Fprintf(os.Stderr, `Usage: jvgrep [options] [pattern] [file...]
   Version %s
@@ -244,7 +243,7 @@ func main() {
 				n--
 			}
 		} else if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] == '-' {
-			if n == argc -1 {
+			if n == argc-1 {
 				usage()
 			}
 			switch argv[n] {
@@ -314,7 +313,7 @@ func main() {
 		}
 	}
 
-	if syscall.OS == "windows" {
+	if runtime.GOOS == "windows" {
 		// set dll name that is first to try to load by go-iconv.
 		os.Setenv("ICONV_DLL", "jvgrep-iconv.dll")
 	}
@@ -356,7 +355,7 @@ func main() {
 				}
 			}
 			if n == 0 && i == "~" {
-				if syscall.OS == "windows" {
+				if runtime.GOOS == "windows" {
 					i = os.Getenv("USERPROFILE")
 				} else {
 					i = os.Getenv("HOME")
@@ -368,7 +367,7 @@ func main() {
 
 			globmask = filepath.Join(globmask, i)
 			if n == 0 {
-				if syscall.OS == "windows" && filepath.VolumeName(i) != "" {
+				if runtime.GOOS == "windows" && filepath.VolumeName(i) != "" {
 					globmask = i + "/"
 				} else if len(globmask) == 0 {
 					globmask = "/"
@@ -382,7 +381,7 @@ func main() {
 		if recursive {
 			globmask += "/"
 		}
-		if syscall.OS == "windows" {
+		if runtime.GOOS == "windows" {
 			// keep double backslask windows UNC.
 			if len(arg) > 2 && (arg[0:2] == `\\` || arg[0:2] == `//`) {
 				root = "/" + root
@@ -395,7 +394,7 @@ func main() {
 		filemask := ""
 		for i := 0; i < len(cc); i++ {
 			if cc[i] == '*' {
-				if i < len(cc) - 2 && cc[i+1] == '*' && cc[i+2] == '/' {
+				if i < len(cc)-2 && cc[i+1] == '*' && cc[i+2] == '/' {
 					filemask += "(.*/)?"
 					i += 2
 				} else {
@@ -422,7 +421,7 @@ func main() {
 			}
 			filemask += "[^/]*"
 		}
-		if syscall.OS == "windows" || syscall.OS == "darwin" {
+		if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 			dirmask = "(?i:" + dirmask + ")"
 			filemask = "(?i:" + filemask + ")"
 		}
@@ -446,7 +445,7 @@ func main() {
 			}
 
 			if info.IsDir() {
-				if path == "." || recursive || len(path) <= len(root) || dre.MatchString(path + "/") {
+				if path == "." || recursive || len(path) <= len(root) || dre.MatchString(path+"/") {
 					return nil
 				}
 				return filepath.SkipDir
