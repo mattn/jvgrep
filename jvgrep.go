@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"regexp/syntax"
 	"runtime"
 	"strings"
 )
@@ -47,6 +48,8 @@ var number bool
 var recursive bool
 var verbose bool
 var utf8 bool
+var perl bool
+var basic bool
 
 func printline(oc *iconv.Iconv, s string) bool {
 	if oc != nil {
@@ -184,10 +187,12 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `Usage: jvgrep [options] [pattern] [file...]
+	fmt.Fprintf(os.Stderr, `Usage: jvgrep [OPTION] [PATTERN] [FILE...]
   Version %s
   -8             : output utf8
-  -F             : fixed match
+  -F             : PATTERN is a set of newline-separated fixed strings
+  -G             : PATTERN is a basic regular expression (BRE)
+  -P             : PATTERN is a Perl regular expression
   -R             : recursive
   -S             : verbose
   -V             : version
@@ -230,6 +235,10 @@ func main() {
 				list = true
 			case 'n':
 				number = true
+			case 'P':
+				perl = true
+			case 'G':
+				basic = true
 			case 'v':
 				invert = true
 			case 'V':
@@ -285,6 +294,26 @@ func main() {
 	}
 	if fixed {
 		pattern = instr
+	} else if perl {
+		re, err := syntax.Parse(instr, syntax.Perl)
+		if err != nil {
+			println(err.Error())
+			os.Exit(-1)
+		}
+		rec, err := syntax.Compile(re)
+		if err != nil {
+			println(err.Error())
+			os.Exit(-1)
+		}
+		instr = rec.String()
+		if ignorecase {
+			instr = "(?i:" + instr + ")"
+		}
+		pattern, err = regexp.Compile(instr)
+		if err != nil {
+			println(err.Error())
+			os.Exit(-1)
+		}
 	} else {
 		if ignorecase {
 			instr = "(?i:" + instr + ")"
