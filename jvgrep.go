@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/mattn/go-iconv"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -51,7 +52,7 @@ var utf8 bool
 var perl bool
 var basic bool
 
-func printline(oc *iconv.Iconv, s string) bool {
+func printline(w io.Writer, oc *iconv.Iconv, s string) bool {
 	if oc != nil {
 		ss, err := oc.Conv(s)
 		if err != nil {
@@ -59,7 +60,7 @@ func printline(oc *iconv.Iconv, s string) bool {
 		}
 		s = ss
 	}
-	fmt.Println(s)
+	fmt.Fprintln(w, s)
 	return true
 }
 
@@ -90,6 +91,7 @@ func Grep(arg *GrepArg) {
 		}) != -1 {
 		fencs = []string{""}
 	}
+
 	for _, enc := range fencs {
 		if verbose {
 			println("trying("+enc+"):", path)
@@ -143,18 +145,18 @@ func Grep(arg *GrepArg) {
 				println("found("+enc+"):", path)
 			}
 			if list {
-				printline(arg.oc, path)
+				printline(os.Stdout, arg.oc, path)
 				did = true
 				break
 			}
 			if arg.single && !number {
-				if !printline(arg.oc, string(t)) {
+				if !printline(os.Stdout, arg.oc, string(t)) {
 					fmt.Printf("matched binary file: %s\n", path)
 					did = true
 					break
 				}
 			} else {
-				if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t))) {
+				if !printline(os.Stdout, arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t))) {
 					fmt.Printf("matched binary file: %s\n", path)
 					did = true
 					break
@@ -189,13 +191,13 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 func usage() {
 	fmt.Fprintf(os.Stderr, `Usage: jvgrep [OPTION] [PATTERN] [FILE...]
   Version %s
-  -8             : output utf8
+  -8             : show result as utf8 text
   -F             : PATTERN is a set of newline-separated fixed strings
   -G             : PATTERN is a basic regular expression (BRE)
   -P             : PATTERN is a Perl regular expression
-  -R             : recursive
-  -S             : verbose
-  -V             : version
+  -R             : search files recursively
+  -S             : verbose messages
+  -V             : print version information and exit
   -enc encodings : encodings: comma separated
   -exclud regexp : exclude files: specify as regexp
   -f file        : obtain pattern file
@@ -219,7 +221,7 @@ func main() {
 	argv := os.Args
 	argc := len(argv)
 	for n := 1; n < argc; n++ {
-		if len(argv[n]) > 0 && argv[n][0] == '-' {
+		if len(argv[n]) > 0 && argv[n][0] == '-' && argv[n][1] != '-' {
 			switch argv[n][1] {
 			case '8':
 				utf8 = true
@@ -241,6 +243,12 @@ func main() {
 				basic = true
 			case 'v':
 				invert = true
+			case 'f':
+				if n < argc - 1 {
+					infile = argv[n+1]
+					n++
+					continue
+				}
 			case 'V':
 				fmt.Fprintf(os.Stdout, "%s\n", version)
 				os.Exit(0)
@@ -260,8 +268,6 @@ func main() {
 				encs = argv[n+1]
 			case "--exclude":
 				exclude = argv[n+1]
-			case "-f":
-				infile = argv[n+1]
 			default:
 				usage()
 			}
@@ -278,61 +284,6 @@ func main() {
 	var err error
 	var errs *string
 	var pattern interface{}
-
-	instr := ""
-	argindex := 0
-	if len(infile) > 0 {
-		b, err := ioutil.ReadFile(infile)
-		if err != nil {
-			println(err.Error())
-			os.Exit(-1)
-		}
-		instr = strings.TrimSpace(string(b))
-	} else {
-		instr = args[0]
-		argindex = 1
-	}
-	if fixed {
-		pattern = instr
-	} else if perl {
-		re, err := syntax.Parse(instr, syntax.Perl)
-		if err != nil {
-			println(err.Error())
-			os.Exit(-1)
-		}
-		rec, err := syntax.Compile(re)
-		if err != nil {
-			println(err.Error())
-			os.Exit(-1)
-		}
-		instr = rec.String()
-		if ignorecase {
-			instr = "(?i:" + instr + ")"
-		}
-		pattern, err = regexp.Compile(instr)
-		if err != nil {
-			println(err.Error())
-			os.Exit(-1)
-		}
-	} else {
-		if ignorecase {
-			instr = "(?i:" + instr + ")"
-		}
-		pattern, err = regexp.Compile(instr)
-		if err != nil {
-			println(err.Error())
-			os.Exit(-1)
-		}
-	}
-
-	var ere *regexp.Regexp
-	if exclude != "" {
-		ere, err = regexp.Compile(exclude)
-		if errs != nil {
-			println(err.Error())
-			os.Exit(-1)
-		}
-	}
 	if encs != "" {
 		encodings = strings.Split(encs, ",")
 	} else {
@@ -360,6 +311,61 @@ func main() {
 		}
 	}()
 
+
+	instr := ""
+	argindex := 0
+	if len(infile) > 0 {
+		b, err := ioutil.ReadFile(infile)
+		if err != nil {
+			printline(os.Stderr, oc, err.Error())
+			os.Exit(-1)
+		}
+		instr = strings.TrimSpace(string(b))
+	} else {
+		instr = args[0]
+		argindex = 1
+	}
+	if fixed {
+		pattern = instr
+	} else if perl {
+		re, err := syntax.Parse(instr, syntax.Perl)
+		if err != nil {
+			printline(os.Stderr, oc, err.Error())
+			os.Exit(-1)
+		}
+		rec, err := syntax.Compile(re)
+		if err != nil {
+			printline(os.Stderr, oc, err.Error())
+			os.Exit(-1)
+		}
+		instr = rec.String()
+		if ignorecase {
+			instr = "(?i:" + instr + ")"
+		}
+		pattern, err = regexp.Compile(instr)
+		if err != nil {
+			printline(os.Stderr, oc, err.Error())
+			os.Exit(-1)
+		}
+	} else {
+		if ignorecase {
+			instr = "(?i:" + instr + ")"
+		}
+		pattern, err = regexp.Compile(instr)
+		if err != nil {
+			printline(os.Stderr, oc, err.Error())
+			os.Exit(-1)
+		}
+	}
+
+	var ere *regexp.Regexp
+	if exclude != "" {
+		ere, err = regexp.Compile(exclude)
+		if errs != nil {
+			printline(os.Stderr, oc, err.Error())
+			os.Exit(-1)
+		}
+	}
 	if len(args) == 1 && argindex != 0 {
 		Grep(&GrepArg{pattern, os.Stdin, oc, true})
 		return
