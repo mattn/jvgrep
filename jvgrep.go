@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const version = "1.6"
+const version = "1.7"
 
 var encodings = []string{
 	"latin-1",
