@@ -191,20 +191,20 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 func usage() {
 	fmt.Fprintf(os.Stderr, `Usage: jvgrep [OPTION] [PATTERN] [FILE...]
   Version %s
-  -8             : show result as utf8 text
-  -F             : PATTERN is a set of newline-separated fixed strings
-  -G             : PATTERN is a basic regular expression (BRE)
-  -P             : PATTERN is a Perl regular expression
-  -R             : search files recursively
-  -S             : verbose messages
-  -V             : print version information and exit
-  -enc encodings : encodings: comma separated
-  -exclud regexp : exclude files: specify as regexp
-  -f file        : obtain pattern file
-  -i             : ignore case(currently fixed only)
-  -l             : print only names of FILEs containing matches
-  -n             : print line number with output lines
-  -v             : select non-matching lines`, version)
+  -8               : show result as utf8 text
+  -F               : PATTERN is a set of newline-separated fixed strings
+  -G               : PATTERN is a basic regular expression (BRE)
+  -P               : PATTERN is a Perl regular expression
+  -R               : search files recursively
+  -S               : verbose messages
+  -V               : print version information and exit
+  --enc encodings  : encodings: comma separated
+  --exclude regexp : exclude files: specify as regexp
+  -f file          : obtain pattern file
+  -i               : ignore case(currently fixed only)
+  -l               : print only names of FILEs containing matches
+  -n               : print line number with output lines
+  -v               : select non-matching lines`, version)
 	fmt.Println("Supported Encodings:")
 	fmt.Fprintln(os.Stderr, "  Supported Encodings:")
 	for _, enc := range encodings {
