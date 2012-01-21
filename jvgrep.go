@@ -112,7 +112,8 @@ func Grep(arg *GrepArg) {
 			if l == 0 {
 				continue
 			}
-			if ic == nil || enc == "" || ((enc == "utf-16be" || enc == "utf-16le") && l < 4) {
+			if ic == nil || enc == "" ||
+					((enc == "utf-16be" || enc == "utf-16le") && l < 4) {
 				t = []byte(line)
 			} else {
 				t, err = ic.ConvBytes(line)
@@ -166,6 +167,7 @@ func Grep(arg *GrepArg) {
 		}
 		if ic != nil {
 			ic.Close()
+			ic = nil
 		}
 		runtime.GC()
 		if !conv_error {
