@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const version = "1.8"
+const version = "1.9"
 
 var encodings = []string{
 	"latin-1",
@@ -416,10 +416,10 @@ func main() {
 		}
 		globmask = filepath.ToSlash(filepath.Clean(globmask))
 		if recursive {
-			if globmask == "*" {
-				globmask = "**/*"
-			} else {
+			if strings.Index(globmask, "/") > -1 {
 				globmask += "/"
+			} else {
+				globmask = "**/" + globmask
 			}
 		}
 		if runtime.GOOS == "windows" {
