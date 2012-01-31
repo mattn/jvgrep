@@ -157,7 +157,14 @@ func Grep(arg *GrepArg) {
 					break
 				}
 			} else {
-				if !printline(os.Stdout, arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t))) {
+				if bytes.IndexFunc(
+					t, func(r rune) bool {
+						return r < 0x9
+					}) != -1 {
+					fmt.Printf("matched binary file: %s\n", path)
+					did = true
+					break
+				} else if !printline(os.Stdout, arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t))) {
 					fmt.Printf("matched binary file: %s\n", path)
 					did = true
 					break
