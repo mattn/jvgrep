@@ -20,9 +20,8 @@ var encodings = []string{
 	"latin-1",
 	"iso-2022-jp-3",
 	"iso-2022-jp",
-	"euc-jisx0213",
-	"euc-jp",
 	"utf-8",
+	"euc-jisx0213",
 	"euc-jp",
 	"eucjp-ms",
 	"cp932",
@@ -112,8 +111,7 @@ func Grep(arg *GrepArg) {
 			if l == 0 {
 				continue
 			}
-			if ic == nil || enc == "" ||
-					((enc == "utf-16be" || enc == "utf-16le") && l < 4) {
+			if ic == nil || enc == "" {
 				t = []byte(line)
 			} else {
 				t, err = ic.ConvBytes(line)
