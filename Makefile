@@ -18,3 +18,6 @@ package: jvgrep.exe
 	cp jvgrep.exe jvgrep-win32-$(VERSION)/.
 	upx jvgrep-win32-$(VERSION)/jvgrep.exe
 	tar cv jvgrep-win32-$(VERSION) | gzip > jvgrep-win32-$(VERSION).tar.gz
+
+upload:
+	github-upload jvgrep-win32-$(VERSION).tar.gz mattn/jvgrep
