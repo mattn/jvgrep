@@ -1,16 +1,12 @@
-VERSION=`bin/jvgrep -V`
+# Copyright 2011 The Go Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file.
 
-bin/jvgrep: src/jvgrep/jvgrep.go
-	go install jvgrep
+include $(GOROOT)/src/Make.inc
 
-package: bin/jvgrep.exe
-	-rm -r jvgrep-win32-$(VERSION)
-	-mkdir jvgrep-win32-$(VERSION)
-	cp iconv.dll jvgrep-win32-$(VERSION)/jvgrep-iconv.dll
-	cp bin/jvgrep.exe jvgrep-win32-$(VERSION)/.
-	upx jvgrep-win32-$(VERSION)/jvgrep.exe
-	tar cv jvgrep-win32-$(VERSION) | gzip > jvgrep-win32-$(VERSION).tar.gz
-	-rm -r jvgrep-win32-$(VERSION)
+VERSION=`./jvgrep -V`
+TARG=jvgrep
+GOFILES=\
+	jvgrep.go\
 
-upload:
-	github-upload jvgrep-win32-$(VERSION).tar.gz mattn/jvgrep
+include $(GOROOT)/src/Make.cmd
