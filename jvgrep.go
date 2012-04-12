@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const version = "2.0"
+const version = "2.1"
 
 var encodings = []string{
 	"latin-1",
@@ -38,7 +38,7 @@ type GrepArg struct {
 }
 
 var encs string
-var exclude string
+var exclude string = `\.git|\.svn\|\.hg`
 var fixed bool
 var ignorecase bool
 var infile string
@@ -207,6 +207,7 @@ func usage() {
   -V               : print version information and exit
   --enc encodings  : encodings: comma separated
   --exclude regexp : exclude files: specify as regexp
+                     (default: \.git|\.svn|\.hg)
   -f file          : obtain pattern file
   -i               : ignore case(currently fixed only)
   -l               : print only names of FILEs containing matches
