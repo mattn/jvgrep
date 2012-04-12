@@ -38,7 +38,7 @@ type GrepArg struct {
 }
 
 var encs string
-var exclude string = `\.git|\.svn\|\.hg`
+var exclude string = `\.git|\.svn|\.hg|\.svn`
 var fixed bool
 var ignorecase bool
 var infile string
