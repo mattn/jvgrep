@@ -212,7 +212,9 @@ func usage() {
   -i               : ignore case(currently fixed only)
   -l               : print only names of FILEs containing matches
   -n               : print line number with output lines
-  -v               : select non-matching lines`, version)
+  -v               : select non-matching lines
+
+`, version)
 	fmt.Println("Supported Encodings:")
 	fmt.Fprintln(os.Stderr, "  Supported Encodings:")
 	for _, enc := range encodings {
