@@ -74,11 +74,13 @@ func Grep(arg *GrepArg) {
 	if path, ok = arg.input.(string); ok {
 		f, err = ioutil.ReadFile(path)
 		if err != nil {
+			printline(os.Stderr, arg.oc, err.Error())
 			return
 		}
 	} else if stdin, ok = arg.input.(*os.File); ok {
 		f, err = ioutil.ReadAll(stdin)
 		if err != nil {
+			printline(os.Stderr, arg.oc, err.Error())
 			return
 		}
 		path = "stdin"
@@ -418,6 +420,14 @@ func main() {
 					globmask = "/"
 				}
 			}
+		}
+		if root == "" {
+			path, _ := filepath.Abs(arg)
+			if verbose {
+				println("search:", path)
+			}
+			ch <- &GrepArg{pattern, path, oc, false}
+			continue
 		}
 		if globmask == "" {
 			globmask = "."
