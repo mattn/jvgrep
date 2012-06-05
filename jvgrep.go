@@ -87,7 +87,7 @@ func Grep(arg *GrepArg) {
 	fencs := encodings
 	if bytes.IndexFunc(
 		f, func(r rune) bool {
-			return r < 0x9
+			return r > 0 && r < 0x9
 		}) != -1 {
 		fencs = []string{""}
 	}
