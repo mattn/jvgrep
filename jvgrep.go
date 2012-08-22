@@ -109,6 +109,10 @@ func Grep(arg *GrepArg) {
 		lines := bytes.Split(f, []byte{'\n'})
 		for n, line = range lines {
 			l = len(line)
+			if l > 0 && line[l-1] == '\r' {
+				line = line[:l-1]
+				l--;
+			}
 			if l == 0 {
 				continue
 			}
