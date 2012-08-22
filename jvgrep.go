@@ -241,7 +241,7 @@ func main() {
 	argv := os.Args
 	argc := len(argv)
 	for n := 1; n < argc; n++ {
-		if len(argv[n]) > 0 && argv[n][0] == '-' && argv[n][1] != '-' {
+		if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] != '-' {
 			switch argv[n][1] {
 			case '8':
 				utf8 = true
