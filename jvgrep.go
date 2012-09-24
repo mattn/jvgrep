@@ -442,10 +442,8 @@ func main() {
 				ch <- &GrepArg{pattern, path, oc, false}
 				continue
 			} else {
-				if globmask == "." || globmask == ".." {
-					root = path
-					globmask = "**/" + globmask
-				}
+				root = path
+				globmask = "**/" + globmask
 			}
 		}
 		if globmask == "" {
