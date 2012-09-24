@@ -435,11 +435,18 @@ func main() {
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
-			if verbose {
-				println("search:", path)
+			if !recursive {
+				if verbose {
+					println("search:", path)
+				}
+				ch <- &GrepArg{pattern, path, oc, false}
+				continue
+			} else {
+				if globmask == "." || globmask == ".." {
+					root = path
+					globmask = "**/" + globmask
+				}
 			}
-			ch <- &GrepArg{pattern, path, oc, false}
-			continue
 		}
 		if globmask == "" {
 			globmask = "."
