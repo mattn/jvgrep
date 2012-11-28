@@ -104,7 +104,6 @@ func Grep(arg *GrepArg) {
 			println("trying("+enc+"):", path)
 		}
 
-		conv_error := false
 		did := false
 		var t []byte
 		var n, l, size, next, prev int
@@ -218,9 +217,6 @@ func Grep(arg *GrepArg) {
 			ic = nil
 		}
 		runtime.GC()
-		if !conv_error {
-			break
-		}
 		if did || next == -1 {
 			break
 		}
