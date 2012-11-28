@@ -194,25 +194,27 @@ func Grep(arg *GrepArg) {
 					did = true
 					break
 				}
-				if arg.single && !number {
-					if !printline(arg.oc, string(t)) {
+				for _, m := range matches {
+					if strings.IndexFunc(
+						m, func(r rune) bool {
+							return r < 0x9
+						}) != -1 {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
-					}
-				} else {
-					for _, m := range matches {
-						if strings.IndexFunc(
-							m, func(r rune) bool {
-								return r < 0x9
-							}) != -1 {
-							errorline(fmt.Sprintf("matched binary file: %s", path))
-							did = true
-							break
-						} else if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n, string(m))) {
-							errorline(fmt.Sprintf("matched binary file: %s", path))
-							did = true
-							break
+					} else {
+						if number {
+							if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n, string(m))) {
+								errorline(fmt.Sprintf("matched binary file: %s", path))
+								did = true
+								break
+							}
+						} else {
+							if !printline(arg.oc, string(m)) {
+								errorline(fmt.Sprintf("matched binary file: %s", path))
+								did = true
+								break
+							}
 						}
 					}
 				}
