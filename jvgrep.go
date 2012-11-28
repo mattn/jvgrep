@@ -163,51 +163,106 @@ func Grep(arg *GrepArg) {
 				continue
 			}
 			var match bool
-			if re, ok := arg.pattern.(*regexp.Regexp); ok {
-				if len(re.FindAllIndex(t, 1)) > 0 {
-					match = true
+			if only {
+				var matches []string
+				ts := string(t)
+				if re, ok := arg.pattern.(*regexp.Regexp); ok {
+					matches = re.FindAllString(ts, -1)
+				} else if s, ok := arg.pattern.(string); ok {
+					if ignorecase {
+						ts = strings.ToLower(ts)
+					}
+					ti := 0
+					tl := len(ts)
+					for ti != -1 && ti < tl-1 {
+						ti = strings.Index(ts[ti:], s)
+						if ti != -1 {
+							matches = append(matches, s)
+							ti++
+						}
+					}
 				}
-			} else if s, ok := arg.pattern.(string); ok {
-				if ignorecase {
-					if strings.Index(strings.ToLower(string(t)),
-						strings.ToLower(s)) > -1 {
-						match = true
+				match = len(matches) > 0
+				if (!invert && !match) || (invert && match) {
+					continue
+				}
+				if verbose {
+					println("found("+enc+"):", path)
+				}
+				if list {
+					printline(arg.oc, path)
+					did = true
+					break
+				}
+				if arg.single && !number {
+					if !printline(arg.oc, string(t)) {
+						errorline(fmt.Sprintf("matched binary file: %s", path))
+						did = true
+						break
 					}
 				} else {
-					if strings.Index(string(t), s) > -1 {
-						match = true
+					for _, m := range matches {
+						if strings.IndexFunc(
+							m, func(r rune) bool {
+								return r < 0x9
+							}) != -1 {
+							errorline(fmt.Sprintf("matched binary file: %s", path))
+							did = true
+							break
+						} else if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n, string(m))) {
+							errorline(fmt.Sprintf("matched binary file: %s", path))
+							did = true
+							break
+						}
 					}
 				}
-			}
-			if (!invert && !match) || (invert && match) {
-				continue
-			}
-			if verbose {
-				println("found("+enc+"):", path)
-			}
-			if list {
-				printline(arg.oc, path)
-				did = true
-				break
-			}
-			if arg.single && !number {
-				if !printline(arg.oc, string(t)) {
-					errorline(fmt.Sprintf("matched binary file: %s", path))
+			} else {
+				if re, ok := arg.pattern.(*regexp.Regexp); ok {
+					if len(re.FindAllIndex(t, 1)) > 0 {
+						match = true
+					}
+				} else if s, ok := arg.pattern.(string); ok {
+					if ignorecase {
+						if strings.Index(strings.ToLower(string(t)),
+							strings.ToLower(s)) > -1 {
+							match = true
+						}
+					} else {
+						if strings.Index(string(t), s) > -1 {
+							match = true
+						}
+					}
+				}
+				if (!invert && !match) || (invert && match) {
+					continue
+				}
+				if verbose {
+					println("found("+enc+"):", path)
+				}
+				if list {
+					printline(arg.oc, path)
 					did = true
 					break
 				}
-			} else {
-				if bytes.IndexFunc(
-					t, func(r rune) bool {
-						return r < 0x9
-					}) != -1 {
-					errorline(fmt.Sprintf("matched binary file: %s", path))
-					did = true
-					break
-				} else if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n, string(t))) {
-					errorline(fmt.Sprintf("matched binary file: %s", path))
-					did = true
-					break
+				if arg.single && !number {
+					if !printline(arg.oc, string(t)) {
+						errorline(fmt.Sprintf("matched binary file: %s", path))
+						did = true
+						break
+					}
+				} else {
+					if bytes.IndexFunc(
+						t, func(r rune) bool {
+							return r < 0x9
+						}) != -1 {
+						errorline(fmt.Sprintf("matched binary file: %s", path))
+						did = true
+						break
+					} else if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n, string(t))) {
+						errorline(fmt.Sprintf("matched binary file: %s", path))
+						did = true
+						break
+					}
 				}
 			}
 			did = true
@@ -428,7 +483,8 @@ func main() {
 	ch := make(chan *GrepArg)
 	done := make(chan int)
 	go GoGrep(ch, done)
-	for _, arg := range args[argindex:] {
+	nargs := len(args[argindex:])
+	for ai, arg := range args[argindex:] {
 		globmask = ""
 		root := ""
 		arg = strings.Trim(arg, `"`)
@@ -466,7 +522,7 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, oc, false}
+				ch <- &GrepArg{pattern, path, oc, ai == nargs-1}
 				continue
 			} else {
 				root = path
@@ -559,7 +615,7 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, oc, false}
+				ch <- &GrepArg{pattern, path, oc, ai == nargs-1}
 			}
 			return nil
 		})
