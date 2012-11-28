@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/mattn/go-iconv"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"regexp/syntax"
 	"runtime"
+	"syscall"
 	"strings"
 )
 
@@ -25,7 +25,7 @@ var encodings = []string{
 	"euc-jp",
 	"eucjp-ms",
 	"cp932",
-	"utf-16",
+	"utf-16", // utf-16 should be at last
 	"",
 }
 
@@ -42,6 +42,7 @@ var fixed bool
 var ignorecase bool
 var infile string
 var invert bool
+var only bool
 var list bool
 var number bool
 var recursive bool
@@ -50,15 +51,21 @@ var utf8 bool
 var perl bool
 var basic bool
 
-func printline(w io.Writer, oc *iconv.Iconv, s string) bool {
+func printline(oc *iconv.Iconv, s string) bool {
 	if oc != nil {
-		ss, err := oc.Conv(s)
+		b, err := oc.ConvBytes([]byte(s + "\n"))
 		if err != nil {
 			return false
 		}
-		s = ss
+		syscall.Write(syscall.Stdout, b)
+	} else {
+		os.Stdout.WriteString(s + "\n")
 	}
-	fmt.Fprintln(w, s)
+	return true
+}
+
+func errorline(s string) bool {
+	os.Stderr.WriteString(s + "\n")
 	return true
 }
 
@@ -73,13 +80,13 @@ func Grep(arg *GrepArg) {
 	if path, ok = arg.input.(string); ok {
 		f, err = ioutil.ReadFile(path)
 		if err != nil {
-			printline(os.Stderr, arg.oc, err.Error())
+			errorline(err.Error())
 			return
 		}
 	} else if stdin, ok = arg.input.(*os.File); ok {
 		f, err = ioutil.ReadAll(stdin)
 		if err != nil {
-			printline(os.Stderr, arg.oc, err.Error())
+			errorline(err.Error())
 			return
 		}
 		path = "stdin"
@@ -96,43 +103,65 @@ func Grep(arg *GrepArg) {
 		if verbose {
 			println("trying("+enc+"):", path)
 		}
+
+		conv_error := false
+		did := false
+		var t []byte
+		var n, l, size, next, prev int
+
 		if enc != "" {
 			ic, err = iconv.Open("utf-8", enc)
 			if err != nil {
 				continue
 			}
+			if enc == "utf-16" && len(f) > 2 {
+				if f[0] == 0xfe && f[1] == 0xff {
+					for nn := 0; nn < len(f); nn += 2 {
+						nt := f[nn]
+						f[nn] = f[nn+1]
+						f[nn+1] = nt
+					}
+				}
+			}
+			ff, err := ic.ConvBytes(f)
+			if err != nil {
+				next = -1
+				continue
+			}
+			f = ff
 		}
-		did := false
-		conv_error := false
-		var t, line []byte
-		var n, l int
-		lines := bytes.Split(f, []byte{'\n'})
-		for n, line = range lines {
-			l = len(line)
-			if l > 0 && line[l-1] == '\r' {
-				line = line[:l-1]
+		size = len(f)
+		if size == 0 {
+			continue
+		}
+
+		for next != -1 {
+			for {
+				if next >= size {
+					next = -1
+					break
+				}
+				if f[next] == '\n' {
+					break
+				}
+				next++
+			}
+			n++
+			if next == -1 {
+				t = f[prev:]
+			} else {
+				t = f[prev:next]
+				prev = next + 1
+				next++
+			}
+
+			l = len(t)
+			if l > 0 && t[l-1] == '\r' {
+				t = t[:l-1]
 				l--;
 			}
 			if l == 0 {
 				continue
-			}
-			if ic == nil || enc == "" {
-				t = []byte(line)
-			} else {
-				if n == 0 && enc == "utf-16" && len(line) > 2 {
-					if line[0] == 0xfe && line[1] == 0xff {
-						for nn := 0; nn < len(line); nn += 2 {
-							nt := line[nn]
-							line[nn] = line[nn+1]
-							line[nn+1] = nt
-						}
-					}
-				}
-				t, err = ic.ConvBytes(line)
-				if err != nil {
-					conv_error = true
-					break
-				}
 			}
 			var match bool
 			if re, ok := arg.pattern.(*regexp.Regexp); ok {
@@ -158,13 +187,13 @@ func Grep(arg *GrepArg) {
 				println("found("+enc+"):", path)
 			}
 			if list {
-				printline(os.Stdout, arg.oc, path)
+				printline(arg.oc, path)
 				did = true
 				break
 			}
 			if arg.single && !number {
-				if !printline(os.Stdout, arg.oc, string(t)) {
-					printline(os.Stdout, arg.oc, fmt.Sprintf("matched binary file: %s\n", path))
+				if !printline(arg.oc, string(t)) {
+					errorline(fmt.Sprintf("matched binary file: %s", path))
 					did = true
 					break
 				}
@@ -173,11 +202,11 @@ func Grep(arg *GrepArg) {
 					t, func(r rune) bool {
 						return r < 0x9
 					}) != -1 {
-					printline(os.Stdout, arg.oc, fmt.Sprintf("matched binary file: %s\n", path))
+					errorline(fmt.Sprintf("matched binary file: %s", path))
 					did = true
 					break
-				} else if !printline(os.Stdout, arg.oc, fmt.Sprintf("%s:%d:%s", path, n+1, string(t))) {
-					printline(os.Stdout, arg.oc, fmt.Sprintf("matched binary file: %s\n", path))
+				} else if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n, string(t))) {
+					errorline(fmt.Sprintf("matched binary file: %s", path))
 					did = true
 					break
 				}
@@ -192,7 +221,7 @@ func Grep(arg *GrepArg) {
 		if !conv_error {
 			break
 		}
-		if did || n == len(lines) {
+		if did || next == -1 {
 			break
 		}
 	}
@@ -226,6 +255,7 @@ func usage() {
   -i               : ignore case(currently fixed only)
   -l               : print only names of FILEs containing matches
   -n               : print line number with output lines
+  -o               : show only the part of a line matching PATTERN
   -v               : select non-matching lines
 
 `, version)
@@ -267,6 +297,8 @@ func main() {
 				basic = true
 			case 'v':
 				invert = true
+			case 'o':
+				only = true
 			case 'f':
 				if n < argc - 1 {
 					infile = argv[n+1]
@@ -335,13 +367,12 @@ func main() {
 		}
 	}()
 
-
 	instr := ""
 	argindex := 0
 	if len(infile) > 0 {
 		b, err := ioutil.ReadFile(infile)
 		if err != nil {
-			printline(os.Stderr, oc, err.Error())
+			errorline(err.Error())
 			os.Exit(-1)
 		}
 		instr = strings.TrimSpace(string(b))
@@ -354,12 +385,12 @@ func main() {
 	} else if perl {
 		re, err := syntax.Parse(instr, syntax.Perl)
 		if err != nil {
-			printline(os.Stderr, oc, err.Error())
+			errorline(err.Error())
 			os.Exit(-1)
 		}
 		rec, err := syntax.Compile(re)
 		if err != nil {
-			printline(os.Stderr, oc, err.Error())
+			errorline(err.Error())
 			os.Exit(-1)
 		}
 		instr = rec.String()
@@ -368,7 +399,7 @@ func main() {
 		}
 		pattern, err = regexp.Compile(instr)
 		if err != nil {
-			printline(os.Stderr, oc, err.Error())
+			errorline(err.Error())
 			os.Exit(-1)
 		}
 	} else {
@@ -377,7 +408,7 @@ func main() {
 		}
 		pattern, err = regexp.Compile(instr)
 		if err != nil {
-			printline(os.Stderr, oc, err.Error())
+			errorline(err.Error())
 			os.Exit(-1)
 		}
 	}
@@ -386,7 +417,7 @@ func main() {
 	if exclude != "" {
 		ere, err = regexp.Compile(exclude)
 		if errs != nil {
-			printline(os.Stderr, oc, err.Error())
+			errorline(err.Error())
 			os.Exit(-1)
 		}
 	}
