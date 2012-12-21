@@ -592,6 +592,11 @@ func main() {
 
 		root = filepath.Clean(root)
 
+		if verbose {
+			println("dirmask:", dirmask)
+			println("filemask:", filemask)
+			println("root:", root)
+		}
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if info == nil {
 				return err
