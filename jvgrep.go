@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"regexp/syntax"
 	"runtime"
-	"syscall"
 	"strings"
+	"syscall"
 )
 
 const version = "2.7"
@@ -157,7 +157,7 @@ func Grep(arg *GrepArg) {
 			l = len(t)
 			if l > 0 && t[l-1] == '\r' {
 				t = t[:l-1]
-				l--;
+				l--
 			}
 			if l == 0 {
 				continue
@@ -353,7 +353,7 @@ func main() {
 			case 'o':
 				only = true
 			case 'f':
-				if n < argc - 1 {
+				if n < argc-1 {
 					infile = argv[n+1]
 					n++
 					continue
@@ -524,7 +524,7 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				println(ai, nargs - 1)
+				println(ai, nargs-1)
 				ch <- &GrepArg{pattern, path, oc, ai == nargs-1}
 				continue
 			} else {
