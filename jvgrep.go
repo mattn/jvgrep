@@ -116,9 +116,7 @@ func Grep(arg *GrepArg) {
 			if enc == "utf-16" && len(f) > 2 {
 				if f[0] == 0xfe && f[1] == 0xff {
 					for nn := 0; nn < len(f); nn += 2 {
-						nt := f[nn]
-						f[nn] = f[nn+1]
-						f[nn+1] = nt
+						f[nn], f[nn+1] = f[nn+1], f[nn]
 					}
 				}
 			}
