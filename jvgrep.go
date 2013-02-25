@@ -522,7 +522,6 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				println(ai, nargs-1)
 				ch <- &GrepArg{pattern, path, oc, ai == nargs-1}
 				continue
 			} else {
