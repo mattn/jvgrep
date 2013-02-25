@@ -25,7 +25,8 @@ var encodings = []string{
 	"euc-jp",
 	"eucjp-ms",
 	"cp932",
-	"utf-16", // utf-16 should be at last
+	"utf-16",
+	"utf-16le",
 	"",
 }
 
@@ -96,7 +97,7 @@ func Grep(arg *GrepArg) {
 		f, func(r rune) bool {
 			return r > 0 && r < 0x9
 		}) != -1 {
-		fencs = []string{""}
+		fencs = []string{"utf-16le"}
 	}
 
 	for _, enc := range fencs {
