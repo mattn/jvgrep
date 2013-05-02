@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
+	"code.google.com/p/mahonia"
 	"fmt"
-	"github.com/mattn/go-iconv"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,29 +11,23 @@ import (
 	"regexp/syntax"
 	"runtime"
 	"strings"
-	"syscall"
 )
 
 const version = "2.7"
 
 var encodings = []string{
-	"latin-1",
-	"iso-2022-jp-3",
+	"ascii",
 	"iso-2022-jp",
 	"utf-8",
-	"euc-jisx0213",
 	"euc-jp",
-	"eucjp-ms",
-	"cp932",
+	"sjis",
 	"utf-16",
-	"utf-16le",
 	"",
 }
 
 type GrepArg struct {
 	pattern interface{}
 	input   interface{}
-	oc      *iconv.Iconv
 	single  bool
 }
 
@@ -52,16 +46,8 @@ var utf8 bool
 var perl bool
 var basic bool
 
-func printline(oc *iconv.Iconv, s string) bool {
-	if oc != nil {
-		b, err := oc.ConvBytes([]byte(s + "\n"))
-		if err != nil {
-			return false
-		}
-		syscall.Write(syscall.Stdout, b)
-	} else {
-		os.Stdout.WriteString(s + "\n")
-	}
+func printline(s string) bool {
+	os.Stdout.WriteString(s + "\n")
 	return true
 }
 
@@ -76,7 +62,6 @@ func Grep(arg *GrepArg) {
 	var ok bool
 	var stdin *os.File
 	var err error
-	var ic *iconv.Iconv
 
 	if path, ok = arg.input.(string); ok {
 		f, err = ioutil.ReadFile(path)
@@ -110,8 +95,8 @@ func Grep(arg *GrepArg) {
 		var n, l, size, next, prev int
 
 		if enc != "" {
-			ic, err = iconv.Open("utf-8", enc)
-			if err != nil {
+			ic := mahonia.NewDecoder(enc)
+			if ic == nil {
 				continue
 			}
 			if enc == "utf-16" && len(f) > 2 {
@@ -121,12 +106,12 @@ func Grep(arg *GrepArg) {
 					}
 				}
 			}
-			ff, err := ic.ConvBytes(f)
-			if err != nil {
+			ff, ok := ic.ConvertStringOK(string(f))
+			if !ok {
 				next = -1
 				continue
 			}
-			f = ff
+			f = []byte(ff)
 		}
 		size = len(f)
 		if size == 0 {
@@ -189,7 +174,7 @@ func Grep(arg *GrepArg) {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					printline(arg.oc, path)
+					printline(path)
 					did = true
 					break
 				}
@@ -203,13 +188,13 @@ func Grep(arg *GrepArg) {
 						break
 					} else {
 						if number {
-							if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n, string(m))) {
+							if !printline(fmt.Sprintf("%s:%d:%s", path, n, string(m))) {
 								errorline(fmt.Sprintf("matched binary file: %s", path))
 								did = true
 								break
 							}
 						} else {
-							if !printline(arg.oc, string(m)) {
+							if !printline(string(m)) {
 								errorline(fmt.Sprintf("matched binary file: %s", path))
 								did = true
 								break
@@ -241,12 +226,12 @@ func Grep(arg *GrepArg) {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					printline(arg.oc, path)
+					printline(path)
 					did = true
 					break
 				}
 				if arg.single && !number {
-					if !printline(arg.oc, string(t)) {
+					if !printline(string(t)) {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
@@ -259,7 +244,7 @@ func Grep(arg *GrepArg) {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
-					} else if !printline(arg.oc, fmt.Sprintf("%s:%d:%s", path, n, string(t))) {
+					} else if !printline(fmt.Sprintf("%s:%d:%s", path, n, string(t))) {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
@@ -267,10 +252,6 @@ func Grep(arg *GrepArg) {
 				}
 			}
 			did = true
-		}
-		if ic != nil {
-			ic.Close()
-			ic = nil
 		}
 		runtime.GC()
 		if did || next == -1 {
@@ -406,19 +387,6 @@ func main() {
 		os.Setenv("ICONV_DLL", "jvgrep-iconv.dll")
 	}
 
-	var oc *iconv.Iconv
-	if !utf8 {
-		oc, err = iconv.Open("char", "utf-8")
-		if err != nil {
-			oc, err = iconv.Open("utf-8", "utf-8")
-		}
-	}
-	defer func() {
-		if oc != nil {
-			oc.Close()
-		}
-	}()
-
 	instr := ""
 	argindex := 0
 	if len(infile) > 0 {
@@ -474,7 +442,7 @@ func main() {
 		}
 	}
 	if len(args) == 1 && argindex != 0 {
-		Grep(&GrepArg{pattern, os.Stdin, oc, true})
+		Grep(&GrepArg{pattern, os.Stdin, true})
 		return
 	}
 
@@ -523,7 +491,7 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, oc, ai == nargs-1}
+				ch <- &GrepArg{pattern, path, ai == nargs-1}
 				continue
 			} else {
 				root = path
@@ -621,8 +589,7 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				//ch <- &GrepArg{pattern, path, oc, ai == nargs-1}
-				ch <- &GrepArg{pattern, path, oc, false}
+				ch <- &GrepArg{pattern, path, false}
 			}
 			return nil
 		})
