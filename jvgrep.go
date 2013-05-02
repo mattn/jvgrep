@@ -24,7 +24,7 @@ var encodings = []string{
 	"euc-jp",
 	"sjis",
 	"utf-16",
-	"latin-1",
+	"",
 }
 
 type GrepArg struct {
@@ -49,9 +49,6 @@ var perl bool
 var basic bool
 
 func printline(s string) bool {
-	if utf8.ValidString(s) {
-		return false
-	}
 	var err error
 	if !utf8out {
 		_, err = os.Stdout.WriteString(s + "\n")
@@ -191,13 +188,17 @@ func Grep(arg *GrepArg) {
 						break
 					} else {
 						if number {
-							if !printline(fmt.Sprintf("%s:%d:%s", path, n, string(m))) {
+							if utf8.ValidString(m) {
+								printline(fmt.Sprintf("%s:%d:%s", path, n, m))
+							} else {
 								errorline(fmt.Sprintf("matched binary file: %s", path))
 								did = true
 								break
 							}
 						} else {
-							if !printline(string(m)) {
+							if utf8.ValidString(m) {
+								printline(m)
+							} else {
 								errorline(fmt.Sprintf("matched binary file: %s", path))
 								did = true
 								break
@@ -234,7 +235,9 @@ func Grep(arg *GrepArg) {
 					break
 				}
 				if arg.single && !number {
-					if !printline(string(t)) {
+					if utf8.Valid(t) {
+						printline(string(t))
+					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
@@ -247,7 +250,9 @@ func Grep(arg *GrepArg) {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
-					} else if !printline(fmt.Sprintf("%s:%d:%s", path, n, string(t))) {
+					} else if utf8.Valid(t) {
+						printline(fmt.Sprintf("%s:%d:%s", path, n, string(t)))
+					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
