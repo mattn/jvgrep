@@ -11,6 +11,8 @@ import (
 	"regexp/syntax"
 	"runtime"
 	"strings"
+	"syscall"
+	"unicode/utf8"
 )
 
 const version = "2.7"
@@ -22,7 +24,7 @@ var encodings = []string{
 	"euc-jp",
 	"sjis",
 	"utf-16",
-	"",
+	"latin-1",
 }
 
 type GrepArg struct {
@@ -42,18 +44,26 @@ var list bool
 var number bool
 var recursive bool
 var verbose bool
-var utf8 bool
+var utf8out bool
 var perl bool
 var basic bool
 
 func printline(s string) bool {
-	os.Stdout.WriteString(s + "\n")
-	return true
+	if utf8.ValidString(s) {
+		return false
+	}
+	var err error
+	if !utf8out {
+		_, err = os.Stdout.WriteString(s + "\n")
+	} else {
+		_, err = syscall.Write(syscall.Stdout, []byte(s))
+	}
+	return err == nil
 }
 
 func errorline(s string) bool {
-	os.Stderr.WriteString(s + "\n")
-	return true
+	_, err := os.Stderr.WriteString(s + "\n")
+	return err == nil
 }
 
 func Grep(arg *GrepArg) {
@@ -77,15 +87,8 @@ func Grep(arg *GrepArg) {
 		}
 		path = "stdin"
 	}
-	fencs := encodings
-	if bytes.IndexFunc(
-		f, func(r rune) bool {
-			return r > 0 && r < 0x9
-		}) != -1 {
-		fencs = []string{"utf-16le"}
-	}
 
-	for _, enc := range fencs {
+	for _, enc := range encodings {
 		if verbose {
 			println("trying("+enc+"):", path)
 		}
@@ -311,7 +314,7 @@ func main() {
 		if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] != '-' {
 			switch argv[n][1] {
 			case '8':
-				utf8 = true
+				utf8out = true
 			case 'F':
 				fixed = true
 			case 'R':
