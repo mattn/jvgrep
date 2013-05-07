@@ -12,13 +12,13 @@ To compile jvgrep, you must install golang.
 
 And type following
 
-    # goinstall github.com/mattn/jvgrep
+    # go get github.com/mattn/jvgrep
 
 Usage
 -----
 
     Usage: jvgrep [options] [pattern] [file...]
-      Version 0.6
+      Version 0.7
       -F=false: fixed match
       -R=false: recursive
       -S=false: verbose
@@ -31,16 +31,12 @@ Usage
       -v=false: invert match
     
       Supported Encodings:
-        iso-2022-jp-3
         iso-2022-jp
-        euc-jisx0213
         euc-jp
         utf-8
         euc-jp
-        eucjp-ms
         cp932
-        utf-16be
-        utf-16le
+        utf-16
 
 for example,
 
@@ -53,17 +49,13 @@ If you want to use own encodings for jvgrep, try to set environment variable $JV
 Supported Encodings
 -------------------
 
-* iso-2022-jp-3
 * iso-2022-jp
-* euc-jisx0213
 * euc-jp
 * utf-8
 * ucs-2
 * euc-jp
-* eucjp-ms
 * cp932
-* utf-16be (support characters in utf-8)
-* utf-16le (support characters in utf-8)
+* utf-16 (support characters in utf-8)
 
 Vim Enhancement
 ---------------
