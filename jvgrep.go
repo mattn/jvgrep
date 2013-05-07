@@ -390,11 +390,6 @@ func main() {
 		}
 	}
 
-	if runtime.GOOS == "windows" {
-		// set dll name that is first to try to load by go-iconv.
-		os.Setenv("ICONV_DLL", "jvgrep-iconv.dll")
-	}
-
 	instr := ""
 	argindex := 0
 	if len(infile) > 0 {
