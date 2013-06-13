@@ -300,7 +300,6 @@ func usage() {
   -v               : select non-matching lines
 
 `, version)
-	fmt.Println("Supported Encodings:")
 	fmt.Fprintln(os.Stderr, "  Supported Encodings:")
 	for _, enc := range encodings {
 		if enc != "" {
