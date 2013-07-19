@@ -491,7 +491,8 @@ func main() {
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
-			if !recursive {
+			fi, _ := os.Stat(path)
+			if !recursive && (err != nil || !fi.IsDir()) {
 				if verbose {
 					println("search:", path)
 				}
