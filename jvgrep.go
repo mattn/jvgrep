@@ -491,8 +491,7 @@ func main() {
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
-			fi, _ := os.Stat(path)
-			if !recursive && (err != nil || !fi.IsDir()) {
+			if !recursive {
 				if verbose {
 					println("search:", path)
 				}
@@ -500,7 +499,11 @@ func main() {
 				continue
 			} else {
 				root = path
-				globmask = "**/" + globmask
+				if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+					globmask = "**/*"
+				} else {
+					globmask = "**/" + globmask
+				}
 			}
 		}
 		if globmask == "" {
