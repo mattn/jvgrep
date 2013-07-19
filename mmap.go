@@ -1,7 +1,8 @@
+// +build !windows
+
 package main
 
 import (
-	"log"
 	"os"
 	"syscall"
 )
