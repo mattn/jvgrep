@@ -6,35 +6,40 @@ import (
 	"unsafe"
 )
 
-type memfile uintptr
+type memfile struct {
+	ptr  uintptr
+	size int64
+}
 
-func OpenMemfile(filename string) (memfile, error) {
+func OpenMemfile(filename string) (*memfile, error) {
 	f, err := os.Open(filename)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	defer f.Close()
 	fs, err := f.Stat()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	fsize := fs.Size()
 	fmap, err := syscall.CreateFileMapping(syscall.Handle(f.Fd()), nil, syscall.PAGE_READONLY, 0, uint32(fsize), nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	defer syscall.CloseHandle(fmap)
-	mem, err := syscall.MapViewOfFile(fmap, syscall.FILE_SHARE_READ, 0, 0, uintptr(fsize))
+	ptr, err := syscall.MapViewOfFile(fmap, syscall.FILE_SHARE_READ, 0, 0, uintptr(fsize))
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return memfile(mem), nil
+	return &memfile{ptr, fsize}, nil
 }
 
-func (mf memfile) Data() []byte {
-	return *(*[]byte)(unsafe.Pointer(&mf))
+func (mf *memfile) Data() []byte {
+	bb := make([]byte, mf.size)
+	copy(bb, *(*[]byte)(unsafe.Pointer(&mf.ptr)))
+	return bb
 }
 
-func (mf memfile) Close() {
-	syscall.UnmapViewOfFile(uintptr(mf))
+func (mf *memfile) Close() {
+	syscall.UnmapViewOfFile(mf.ptr)
 }
