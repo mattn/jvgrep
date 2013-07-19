@@ -71,11 +71,13 @@ func Grep(arg *GrepArg) {
 	var err error
 
 	if path, ok = arg.input.(string); ok {
-		f, err = ioutil.ReadFile(path)
+		mf, err := OpenMemfile(path)
 		if err != nil {
 			errorline(err.Error())
 			return
 		}
+		defer mf.Close()
+		f = mf.Data()
 	} else if stdin, ok = arg.input.(*os.File); ok {
 		f, err = ioutil.ReadAll(stdin)
 		if err != nil {

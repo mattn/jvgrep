@@ -20,7 +20,7 @@ func OpenMemfile(filename string) (memfile, error) {
 		return nil, err
 	}
 	fsize := fs.Size()
-	mem, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
+	mem, err := syscall.Mmap(int(f.Fd()), 0, int(fsize), syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
 		return nil, err
 	}
