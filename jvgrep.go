@@ -15,7 +15,7 @@ import (
 	"unicode/utf8"
 )
 
-const version = "2.8"
+const version = "2.9"
 
 var encodings = []string{
 	"ascii",
