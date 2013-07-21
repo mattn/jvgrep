@@ -15,7 +15,7 @@ func TestReadZero(t *testing.T) {
 func TestReadHello(t *testing.T) {
 	mf, err := OpenMemfile("testdata/hello.txt")
 	if err != nil {
-		t.Fatal(err);
+		t.Fatal(err)
 	}
 	defer mf.Close()
 	b := mf.Data()
