@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./mmap"
 	"bytes"
 	"code.google.com/p/mahonia"
 	"fmt"
@@ -71,7 +72,7 @@ func Grep(arg *GrepArg) {
 	var err error
 
 	if path, ok = arg.input.(string); ok {
-		mf, err := OpenMemfile(path)
+		mf, err := mmap.OpenMemfile(path)
 		if err != nil {
 			errorline(err.Error())
 			return
