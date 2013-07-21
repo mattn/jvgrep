@@ -1,0 +1,5 @@
+package mmap
+
+import (
+	"testing"
+)
