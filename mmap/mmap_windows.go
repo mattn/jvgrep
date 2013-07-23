@@ -8,8 +8,7 @@ import (
 
 type memfile struct {
 	ptr  uintptr
-	addr *uintptr
-	size int64
+	data []byte
 }
 
 func Open(filename string) (*memfile, error) {
@@ -28,15 +27,17 @@ func Open(filename string) (*memfile, error) {
 		return nil, err
 	}
 	defer syscall.CloseHandle(fmap)
-	ptr, err := syscall.MapViewOfFile(fmap, syscall.FILE_SHARE_READ, 0, 0, uintptr(fsize))
+	ptr, err := syscall.MapViewOfFile(fmap, syscall.FILE_MAP_READ, 0, 0, uintptr(fsize))
 	if err != nil {
 		return nil, err
 	}
-	return &memfile{ptr, &ptr, fsize}, nil
+	data := make([]byte, fsize)
+	copy(data, (*(*[]byte)(unsafe.Pointer(&ptr)))[:fsize])
+	return &memfile{ptr, data}, nil
 }
 
 func (mf *memfile) Data() []byte {
-	return (*(*[]byte)(unsafe.Pointer(mf.addr)))[:mf.size]
+	return mf.data
 }
 
 func (mf *memfile) Close() {
