@@ -72,7 +72,7 @@ func Grep(arg *GrepArg) {
 	var err error
 
 	if path, ok = arg.input.(string); ok {
-		mf, err := mmap.OpenMemfile(path)
+		mf, err := mmap.Open(path)
 		if err != nil {
 			errorline(err.Error())
 			return
@@ -97,7 +97,7 @@ func Grep(arg *GrepArg) {
 		var t []byte
 		var n, l, size, next, prev int
 
-		if false && enc != "" {
+		if enc != "" {
 			ic := mahonia.NewDecoder(enc)
 			if ic == nil {
 				continue
