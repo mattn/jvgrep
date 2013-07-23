@@ -9,7 +9,7 @@ import (
 
 type memfile []byte
 
-func OpenMemfile(filename string) (memfile, error) {
+func Open(filename string) (memfile, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err

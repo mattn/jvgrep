@@ -8,10 +8,11 @@ import (
 
 type memfile struct {
 	ptr  uintptr
+	addr *uintptr
 	size int64
 }
 
-func OpenMemfile(filename string) (*memfile, error) {
+func Open(filename string) (*memfile, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -31,13 +32,11 @@ func OpenMemfile(filename string) (*memfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &memfile{ptr, fsize}, nil
+	return &memfile{ptr, &ptr, fsize}, nil
 }
 
 func (mf *memfile) Data() []byte {
-	bb := make([]byte, mf.size)
-	copy(bb, *(*[]byte)(unsafe.Pointer(&mf.ptr)))
-	return bb
+	return (*(*[]byte)(unsafe.Pointer(mf.addr)))[:mf.size]
 }
 
 func (mf *memfile) Close() {

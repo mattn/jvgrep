@@ -5,7 +5,7 @@ import (
 )
 
 func TestReadZero(t *testing.T) {
-	mf, err := OpenMemfile("testdata/zero.bin")
+	mf, err := Open("testdata/zero.bin")
 	if err == nil {
 		defer mf.Close()
 		t.Fatal("should be failed for zero.bin")
@@ -13,7 +13,7 @@ func TestReadZero(t *testing.T) {
 }
 
 func TestReadHello(t *testing.T) {
-	mf, err := OpenMemfile("testdata/hello.txt")
+	mf, err := Open("testdata/hello.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
