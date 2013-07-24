@@ -1,10 +1,10 @@
 package main
 
 import (
-	"./mmap"
 	"bytes"
 	"code.google.com/p/mahonia"
 	"fmt"
+	"github.com/mattn/jvgrep/mmap"
 	"io/ioutil"
 	"os"
 	"path/filepath"
