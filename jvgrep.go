@@ -54,7 +54,7 @@ func printline(s string) bool {
 	if !utf8out {
 		_, err = os.Stdout.WriteString(s + "\n")
 	} else {
-		_, err = syscall.Write(syscall.Stdout, []byte(s))
+		_, err = syscall.Write(syscall.Stdout, []byte(s + "\n"))
 	}
 	return err == nil
 }
