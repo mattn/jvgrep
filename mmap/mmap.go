@@ -7,7 +7,11 @@ import (
 	"syscall"
 )
 
-type memfile []byte
+type memfile struct {
+	size int64
+	data []byte
+}
+
 
 func Open(filename string) (memfile, error) {
 	f, err := os.Open(filename)
@@ -24,13 +28,17 @@ func Open(filename string) (memfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return memfile(mem), nil
+	return &memfile{fsize, mem}, nil
+}
+
+func (mf *memfile) Size() int64 {
+	return mf.size
 }
 
 func (mf memfile) Data() []byte {
-	return []byte(mf)
+	return mf.data
 }
 
 func (mf memfile) Close() {
-	syscall.Munmap([]byte(mf))
+	syscall.Munmap(mf.data)
 }

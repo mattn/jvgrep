@@ -8,6 +8,7 @@ import (
 
 type memfile struct {
 	ptr  uintptr
+	size int64
 	data []byte
 }
 
@@ -31,7 +32,11 @@ func Open(filename string) (*memfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &memfile{ptr, (*[1 << 20]byte)(unsafe.Pointer(&ptr))[:]}, nil
+	return &memfile{ptr, fsize, (*[1 << 30]byte)(unsafe.Pointer(ptr))[:]}, nil
+}
+
+func (mf *memfile) Size() int64 {
+	return mf.size
 }
 
 func (mf *memfile) Data() []byte {
