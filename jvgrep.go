@@ -72,6 +72,9 @@ func Grep(arg *GrepArg) {
 	var err error
 
 	if path, ok = arg.input.(string); ok {
+		if fi, err := os.Stat(path); err == nil && fi.Size() == 0 {
+			return
+		}
 		mf, err := mmap.Open(path)
 		if err != nil {
 			errorline(err.Error())
