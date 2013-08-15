@@ -102,19 +102,29 @@ func Grep(arg *GrepArg) {
 			if ic == nil {
 				continue
 			}
+			maybe_binary := false
 			if enc == "utf-16" && len(f) > 2 {
 				if f[0] == 0xfe && f[1] == 0xff {
 					for nn := 0; nn < len(f); nn += 2 {
 						f[nn], f[nn+1] = f[nn+1], f[nn]
 					}
 				}
+			} else {
+				for _, b := range f {
+					if b < 0x9 {
+						maybe_binary = true
+						break
+					}
+				}
 			}
-			ff, ok := ic.ConvertStringOK(string(f))
-			if !ok {
-				next = -1
-				continue
+			if !maybe_binary {
+				ff, ok := ic.ConvertStringOK(string(f))
+				if !ok {
+					next = -1
+					continue
+				}
+				f = []byte(ff)
 			}
-			f = []byte(ff)
 		}
 		size = len(f)
 		if size == 0 {
