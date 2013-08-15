@@ -31,9 +31,7 @@ func Open(filename string) (*memfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	data := make([]byte, fsize)
-	copy(data, (*(*[]byte)(unsafe.Pointer(&ptr)))[:fsize])
-	return &memfile{ptr, data}, nil
+	return &memfile{ptr, (*[1 << 20]byte)(unsafe.Pointer(&ptr))[:]}, nil
 }
 
 func (mf *memfile) Data() []byte {
