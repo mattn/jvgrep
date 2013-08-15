@@ -32,7 +32,7 @@ func Open(filename string) (*memfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &memfile{ptr, fsize, (*[1 << 30]byte)(unsafe.Pointer(ptr))[:]}, nil
+	return &memfile{ptr, fsize, (*[1 << 30]byte)(unsafe.Pointer(ptr))[:fsize]}, nil
 }
 
 func (mf *memfile) Size() int64 {
