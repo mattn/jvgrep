@@ -97,7 +97,7 @@ func Grep(arg *GrepArg) {
 		var t []byte
 		var n, l, size, next, prev int
 
-		if enc != "" && enc != "ascii" {
+		if enc != "" {
 			ic := mahonia.NewDecoder(enc)
 			if ic == nil {
 				continue
