@@ -45,6 +45,7 @@ for example,
 `pattern` should be specify with regexp. `file` can be specify wildcard.
 You can specify `pattern` with regular expression include multi-byte characters..
 If you want to use own encodings for jvgrep, try to set environment variable $JVGREP_ENCODINGS to specify encodings separated with comma.
+If you problem about output of jvgrep (ex: output of :grep command in vim), try to set $JVGREP_OUTPUT_ENCODING to specify encoding of output.
 
 Supported Encodings
 -------------------
