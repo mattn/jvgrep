@@ -48,13 +48,17 @@ var verbose bool
 var utf8out bool
 var perl bool
 var basic bool
+var oc mahonia.Encoder
 
 func printline(s string) bool {
 	var err error
-	if !utf8out {
-		_, err = os.Stdout.WriteString(s + "\n")
-	} else {
+	if utf8out {
 		_, err = syscall.Write(syscall.Stdout, []byte(s + "\n"))
+	} else if oc != nil {
+		s = oc.ConvertString(s)
+		_, err = syscall.Write(syscall.Stdout, []byte(s + "\n"))
+	} else {
+		_, err = os.Stdout.WriteString(s + "\n")
 	}
 	return err == nil
 }
@@ -403,6 +407,10 @@ func main() {
 		if enc_env != "" {
 			encodings = strings.Split(enc_env, ",")
 		}
+	}
+	out_enc := os.Getenv("JVGREP_OUTPUT_ENCODING")
+	if out_enc != "" {
+		oc = mahonia.NewEncoder(out_enc)
 	}
 
 	instr := ""
