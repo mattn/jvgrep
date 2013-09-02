@@ -8,6 +8,7 @@ import (
 	"github.com/mattn/jvgrep/mmap"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"regexp/syntax"
@@ -539,6 +540,17 @@ func main() {
 		atty = false
 	} else {
 		usage()
+	}
+
+	if atty {
+		sc := make(chan os.Signal, 10)
+		signal.Notify(sc, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+		go func() {
+			for _ = range sc {
+				ct.ResetColor()
+				os.Exit(0)
+			}
+		}()
 	}
 
 	if len(args) == 1 && argindex != 0 {
