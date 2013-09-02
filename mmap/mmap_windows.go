@@ -1,6 +1,7 @@
 package mmap
 
 import (
+	"errors"
 	"os"
 	"syscall"
 	"unsafe"
@@ -12,7 +13,7 @@ type memfile struct {
 	data []byte
 }
 
-func Open(filename string) (*memfile, error) {
+func Open(filename string) (mf *memfile, err error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -32,6 +33,12 @@ func Open(filename string) (*memfile, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if recover() != nil {
+			mf = nil
+			err = errors.New("Failed option a file")
+		}
+	}()
 	return &memfile{ptr, fsize, (*[1 << 30]byte)(unsafe.Pointer(ptr))[:fsize]}, nil
 }
 
