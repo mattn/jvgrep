@@ -420,6 +420,7 @@ func usage() {
   --exclude regexp : exclude files: specify as regexp
                      (default: \.git|\.svn|\.hg)
   --color [=WHEN]  : always/never/auto
+  -c               : count matches
   -f file          : obtain pattern file
   -i               : ignore case(currently fixed only)
   -l               : print only names of FILEs containing matches
