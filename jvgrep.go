@@ -370,6 +370,7 @@ func usage() {
   --enc encodings  : encodings: comma separated
   --exclude regexp : exclude files: specify as regexp
                      (default: \.git|\.svn|\.hg)
+  --color [=WHEN]  : always/never/auto
   -f file          : obtain pattern file
   -i               : ignore case(currently fixed only)
   -l               : print only names of FILEs containing matches
@@ -532,7 +533,7 @@ func main() {
 	if color == "" {
 		color = os.Getenv("JVGREP_COLOR")
 	}
-	if color == "" {
+	if color == "" || color == "auto" {
 		atty = isAtty()
 	} else if color == "always" {
 		atty = true
