@@ -170,9 +170,11 @@ func Grep(arg *GrepArg) {
 			maybe_binary := false
 			if enc == "utf-16" && len(f) > 2 {
 				if f[0] == 0xfe && f[1] == 0xff {
+					ff := make([]byte, len(f))
 					for nn := 0; nn < len(f); nn += 2 {
-						f[nn], f[nn+1] = f[nn+1], f[nn]
+						ff[nn], ff[nn+1] = f[nn+1], f[nn]
 					}
+					f = ff
 				}
 			} else {
 				for _, b := range f {
