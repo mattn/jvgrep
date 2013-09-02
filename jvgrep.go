@@ -37,8 +37,10 @@ type GrepArg struct {
 	color   bool
 }
 
+const excludeDefaults = `\.git$|\.svn$|\.hg$|\.svn$|\.o$|\.obj$|\.exe$`
+
 var encs string
-var exclude string = `\.git|\.svn|\.hg|\.svn`
+var exclude string
 var fixed bool
 var ignorecase bool
 var infile string
@@ -461,7 +463,6 @@ func main() {
 	}
 
 	var err error
-	var errs *string
 	var pattern interface{}
 	if encs != "" {
 		encodings = strings.Split(encs, ",")
@@ -522,13 +523,16 @@ func main() {
 		}
 	}
 
-	var ere *regexp.Regexp
-	if exclude != "" {
-		ere, err = regexp.Compile(exclude)
-		if errs != nil {
-			errorline(err.Error())
-			os.Exit(-1)
-		}
+	if exclude == "" {
+		exclude = os.Getenv("JVGREP_EXCLUDE")
+	}
+	if exclude == "" {
+		exclude = excludeDefaults
+	}
+	ere, err := regexp.Compile(exclude)
+	if err != nil {
+		errorline(err.Error())
+		os.Exit(-1)
 	}
 
 	atty := false
