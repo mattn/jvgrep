@@ -68,7 +68,9 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		fmt.Print(":")
 		ct.ChangeColor(ct.Green, false, ct.None, false)
 		fmt.Print(l)
+		ct.ChangeColor(ct.Cyan, false, ct.None, false)
 		fmt.Print(":")
+		ct.ResetColor()
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
 		ill := re.FindAllStringIndex(m, -1)
