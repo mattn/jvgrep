@@ -54,12 +54,20 @@ var oc mahonia.Encoder
 var color string
 
 func matchedline(f string, l int, m string, a *GrepArg) {
-	if f != "" {
-		printstr(fmt.Sprintf("%s:%d:", f, l))
-	}
 	if !a.color {
+		if f != "" {
+			printstr(fmt.Sprintf("%s:%d:", f, l))
+		}
 		printline(m)
 		return
+	}
+	if f != "" {
+		ct.ChangeColor(ct.Magenta, false, ct.None, false)
+		printstr(f)
+		ct.ChangeColor(ct.Cyan, false, ct.None, false)
+		fmt.Print(":")
+		ct.ChangeColor(ct.Green, false, ct.None, false)
+		fmt.Print(l)
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
 		il := re.FindStringIndex(m)
