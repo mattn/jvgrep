@@ -17,26 +17,31 @@ And type following
 Usage
 -----
 
-    Usage: jvgrep [options] [pattern] [file...]
-      Version 0.7
-      -F=false: fixed match
-      -R=false: recursive
-      -S=false: verbose
-      -V=false: version
-      -enc="": encodings: comma separated
-      -exclude="": exclude files: specify as regexp
-      -f="": obtain pattern file
-      -i=false: ignore case(currently fixed only)
-      -l=false: listing files
-      -v=false: invert match
-    
-      Supported Encodings:
-        iso-2022-jp
-        euc-jp
-        utf-8
-        euc-jp
-        cp932
-        utf-16
+    -8               : show result as utf8 text
+    -F               : PATTERN is a set of newline-separated fixed strings
+    -G               : PATTERN is a basic regular expression (BRE)
+    -P               : PATTERN is a Perl regular expression
+    -R               : search files recursively
+    -S               : verbose messages
+    -V               : print version information and exit
+    --enc encodings  : encodings: comma separated
+    --exclude regexp : exclude files: specify as regexp
+                       (default: \.git|\.svn|\.hg)
+    --color [=WHEN]  : always/never/auto
+    -f file          : obtain pattern file
+    -i               : ignore case(currently fixed only)
+    -l               : print only names of FILEs containing matches
+    -n               : print line number with output lines
+    -o               : show only the part of a line matching PATTERN
+    -v               : select non-matching lines
+  
+    Supported Encodings:
+      ascii
+      iso-2022-jp
+      utf-8
+      euc-jp
+      sjis
+      utf-16
 
 for example,
 
