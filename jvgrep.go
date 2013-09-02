@@ -514,6 +514,9 @@ func main() {
 
 	atty := false
 	if color == "" {
+		color = os.Getenv("JVGREP_COLOR")
+	}
+	if color == "" {
 		atty = isAtty()
 	} else if color == "always" {
 		atty = true
