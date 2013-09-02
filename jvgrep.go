@@ -56,26 +56,55 @@ var basic bool
 var oc mahonia.Encoder
 var color string
 var cwd, _ = os.Getwd()
+var zero bool
+var count = -1
+var fullpath = true
+
+func matchedfile(f string) {
+	if !fullpath {
+		if fe, err := filepath.Rel(cwd, f); err == nil {
+			f = fe
+		}
+	}
+	if zero {
+		printstr(f)
+		os.Stdout.Write([]byte{0})
+	} else {
+		printline(f)
+	}
+}
 
 func matchedline(f string, l int, m string, a *GrepArg) {
 	if !a.color {
 		if f != "" {
-			if fe, err := filepath.Rel(cwd, f); err == nil {
-				f = fe
+			if !fullpath {
+				if fe, err := filepath.Rel(cwd, f); err == nil {
+					f = fe
+				}
 			}
-			printstr(fmt.Sprintf("%s:%d:", f, l))
+			if zero {
+				printstr(fmt.Sprintf("%s\x00%d:", f, l))
+			} else {
+				printstr(fmt.Sprintf("%s:%d:", f, l))
+			}
 		}
 		printline(m)
 		return
 	}
 	if f != "" {
-		if fe, err := filepath.Rel(cwd, f); err == nil {
-			f = fe
+		if !fullpath {
+			if fe, err := filepath.Rel(cwd, f); err == nil {
+				f = fe
+			}
 		}
 		ct.ChangeColor(ct.Magenta, true, ct.None, false)
 		printstr(f)
 		ct.ChangeColor(ct.Cyan, true, ct.None, false)
-		fmt.Print(":")
+		if zero {
+			os.Stdout.Write([]byte{0})
+		} else {
+			fmt.Print(":")
+		}
 		ct.ChangeColor(ct.Green, true, ct.None, false)
 		fmt.Print(l)
 		ct.ChangeColor(ct.Cyan, true, ct.None, false)
@@ -263,11 +292,15 @@ func Grep(arg *GrepArg) {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					printline(path)
+					matchedfile(path)
 					did = true
 					break
 				}
 				for _, m := range matches {
+					if count != -1 {
+						count++
+						continue
+					}
 					if strings.IndexFunc(
 						m, func(r rune) bool {
 							return r < 0x9
@@ -319,9 +352,14 @@ func Grep(arg *GrepArg) {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					printline(path)
+					matchedfile(path)
 					did = true
 					break
+				}
+				if count != -1 {
+					count++
+					did = true
+					continue
 				}
 				if arg.single && !number {
 					if utf8.Valid(t) {
@@ -388,6 +426,7 @@ func usage() {
   -n               : print line number with output lines
   -o               : show only the part of a line matching PATTERN
   -v               : select non-matching lines
+  -Z               : print 0 byte after FILE name
 
 `, version)
 	fmt.Fprintln(os.Stderr, "  Supported Encodings:")
@@ -415,6 +454,8 @@ func main() {
 				recursive = true
 			case 'S':
 				verbose = true
+			case 'c':
+				count = 0
 			case 'i':
 				ignorecase = true
 			case 'l':
@@ -435,6 +476,8 @@ func main() {
 					n++
 					continue
 				}
+			case 'Z':
+				zero = true
 			case 'V':
 				fmt.Fprintf(os.Stdout, "%s\n", version)
 				os.Exit(0)
@@ -456,6 +499,8 @@ func main() {
 				exclude = argv[n+1]
 			case "--color":
 				color = argv[n+1]
+			case "--null":
+				zero = true
 			default:
 				usage()
 			}
@@ -723,5 +768,8 @@ func main() {
 		})
 	}
 	ch <- nil
+	if count != -1 {
+		fmt.Println(count)
+	}
 	<-done
 }
