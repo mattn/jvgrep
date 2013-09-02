@@ -637,13 +637,6 @@ func main() {
 				globmask = "**/" + globmask
 			}
 		}
-		if runtime.GOOS == "windows" {
-			// keep double backslask windows UNC.
-			if len(arg) > 2 && (arg[0:2] == `\\` || arg[0:2] == `//`) {
-				root = "/" + root
-				globmask = "/" + globmask
-			}
-		}
 
 		cc := []rune(globmask)
 		dirmask := ""
