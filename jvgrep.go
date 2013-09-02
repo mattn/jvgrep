@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"code.google.com/p/mahonia"
 	"fmt"
+	"github.com/daviddengcn/go-colortext"
 	"github.com/mattn/jvgrep/mmap"
 	"io/ioutil"
 	"os"
@@ -32,6 +33,7 @@ type GrepArg struct {
 	pattern interface{}
 	input   interface{}
 	single  bool
+	color   bool
 }
 
 var encs string
@@ -50,22 +52,61 @@ var perl bool
 var basic bool
 var oc mahonia.Encoder
 
-func printline(s string) bool {
-	var err error
-	if utf8out {
-		_, err = syscall.Write(syscall.Stdout, []byte(s + "\n"))
-	} else if oc != nil {
-		s = oc.ConvertString(s)
-		_, err = syscall.Write(syscall.Stdout, []byte(s + "\n"))
-	} else {
-		_, err = os.Stdout.WriteString(s + "\n")
+func matchedline(f string, l int, m string, a *GrepArg) {
+	if f != "" {
+		printstr(fmt.Sprintf("%s:%d:", f, l))
 	}
-	return err == nil
+	if !a.color {
+		printline(m)
+		return
+	}
+	if re, ok := a.pattern.(*regexp.Regexp); ok {
+		il := re.FindStringIndex(m)
+		if len(il) == 0 {
+			printline(m)
+			return
+		}
+		for i := 0; i < len(il); i+= 2 {
+			printstr(m[0:il[i]])
+			ct.ChangeColor(ct.Red, false, ct.None, false)
+			printstr(m[il[i]:il[i+1]])
+			ct.ResetColor()
+		}
+		printline(m[il[len(il)-1]:])
+	} else if s, ok := a.pattern.(string); ok {
+		l := len(s)
+		for {
+			i := strings.Index(m, s)
+			if i < 0 {
+				printline(m)
+				break
+			}
+			printstr(m[0:i])
+			ct.ChangeColor(ct.Red, false, ct.None, false)
+			printstr(m[i:l])
+			ct.ResetColor()
+			m = m[i+l:]
+		}
+	}
 }
 
-func errorline(s string) bool {
-	_, err := os.Stderr.WriteString(s + "\n")
-	return err == nil
+func printline(s string) {
+	printstr(s + "\n")
+}
+
+func printstr(s string) {
+	if utf8out {
+		syscall.Write(syscall.Stdout, []byte(s))
+	} else if oc != nil {
+		s = oc.ConvertString(s)
+		syscall.Write(syscall.Stdout, []byte(s))
+	} else {
+		os.Stdout.WriteString(s)
+	}
+}
+
+func errorline(s string) {
+	os.Stderr.WriteString(s + "\n")
 }
 
 func Grep(arg *GrepArg) {
@@ -209,7 +250,7 @@ func Grep(arg *GrepArg) {
 					} else {
 						if number {
 							if utf8.ValidString(m) {
-								printline(fmt.Sprintf("%s:%d:%s", path, n, m))
+								matchedline(path, n, m, arg)
 							} else {
 								errorline(fmt.Sprintf("matched binary file: %s", path))
 								did = true
@@ -217,7 +258,7 @@ func Grep(arg *GrepArg) {
 							}
 						} else {
 							if utf8.ValidString(m) {
-								printline(m)
+								matchedline("", 0, m, arg)
 							} else {
 								errorline(fmt.Sprintf("matched binary file: %s", path))
 								did = true
@@ -256,7 +297,7 @@ func Grep(arg *GrepArg) {
 				}
 				if arg.single && !number {
 					if utf8.Valid(t) {
-						printline(string(t))
+						matchedline("", -1, string(t), arg)
 					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -271,7 +312,7 @@ func Grep(arg *GrepArg) {
 						did = true
 						break
 					} else if utf8.Valid(t) {
-						printline(fmt.Sprintf("%s:%d:%s", path, n, string(t)))
+						matchedline(path, n, string(t), arg)
 					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -467,8 +508,10 @@ func main() {
 			os.Exit(-1)
 		}
 	}
+	atty := isAtty()
+
 	if len(args) == 1 && argindex != 0 {
-		Grep(&GrepArg{pattern, os.Stdin, true})
+		Grep(&GrepArg{pattern, os.Stdin, true, atty})
 		return
 	}
 
@@ -513,15 +556,20 @@ func main() {
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
-			if !recursive {
+			fi, err := os.Stat(path)
+			if err != nil {
+				errorline(err.Error())
+				os.Exit(-1)
+			}
+			if !recursive && !fi.IsDir() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, ai == nargs-1}
+				ch <- &GrepArg{pattern, path, ai == nargs-1, atty}
 				continue
 			} else {
 				root = path
-				if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+				if fi.IsDir() {
 					globmask = "**/*"
 				} else {
 					globmask = "**/" + globmask
@@ -619,7 +667,7 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, false}
+				ch <- &GrepArg{pattern, path, false, atty}
 			}
 			return nil
 		})
