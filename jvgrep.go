@@ -70,18 +70,22 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		fmt.Print(l)
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
-		il := re.FindStringIndex(m)
-		if len(il) == 0 {
+		ill := re.FindAllStringIndex(m, -1)
+		if len(ill) == 0 {
 			printline(m)
 			return
 		}
-		for i := 0; i < len(il); i+= 2 {
-			printstr(m[0:il[i]])
+		for i, il := range ill {
+			if i > 0 {
+				printstr(m[ill[i-1][1]:il[0]])
+			} else {
+				printstr(m[0:il[0]])
+			}
 			ct.ChangeColor(ct.Red, false, ct.None, false)
-			printstr(m[il[i]:il[i+1]])
+			printstr(m[il[0]:il[1]])
 			ct.ResetColor()
 		}
-		printline(m[il[len(il)-1]:])
+		printline(m[ill[len(ill)-1][1]:])
 	} else if s, ok := a.pattern.(string); ok {
 		l := len(s)
 		for {
@@ -92,7 +96,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 			}
 			printstr(m[0:i])
 			ct.ChangeColor(ct.Red, false, ct.None, false)
-			printstr(m[i:l])
+			printstr(m[i:i+l])
 			ct.ResetColor()
 			m = m[i+l:]
 		}
