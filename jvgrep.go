@@ -51,6 +51,7 @@ var utf8out bool
 var perl bool
 var basic bool
 var oc mahonia.Encoder
+var color string
 
 func matchedline(f string, l int, m string, a *GrepArg) {
 	if f != "" {
@@ -425,6 +426,8 @@ func main() {
 				encs = argv[n+1]
 			case "--exclude":
 				exclude = argv[n+1]
+			case "--color":
+				color = argv[n+1]
 			default:
 				usage()
 			}
@@ -508,7 +511,17 @@ func main() {
 			os.Exit(-1)
 		}
 	}
-	atty := isAtty()
+
+	atty := false
+	if color == "" {
+		atty = isAtty()
+	} else if color == "always" {
+		atty = true
+	} else if color == "never" {
+		atty = false
+	} else {
+		usage()
+	}
 
 	if len(args) == 1 && argindex != 0 {
 		Grep(&GrepArg{pattern, os.Stdin, true, atty})
@@ -558,7 +571,7 @@ func main() {
 			path, _ := filepath.Abs(arg)
 			fi, err := os.Stat(path)
 			if err != nil {
-				errorline(err.Error())
+				errorline(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
 				os.Exit(-1)
 			}
 			if !recursive && !fi.IsDir() {
