@@ -63,13 +63,13 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		return
 	}
 	if f != "" {
-		ct.ChangeColor(ct.Magenta, false, ct.None, false)
+		ct.ChangeColor(ct.Magenta, true, ct.None, false)
 		printstr(f)
-		ct.ChangeColor(ct.Cyan, false, ct.None, false)
+		ct.ChangeColor(ct.Cyan, true, ct.None, false)
 		fmt.Print(":")
-		ct.ChangeColor(ct.Green, false, ct.None, false)
+		ct.ChangeColor(ct.Green, true, ct.None, false)
 		fmt.Print(l)
-		ct.ChangeColor(ct.Cyan, false, ct.None, false)
+		ct.ChangeColor(ct.Cyan, true, ct.None, false)
 		fmt.Print(":")
 		ct.ResetColor()
 	}
@@ -85,7 +85,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 			} else {
 				printstr(m[0:il[0]])
 			}
-			ct.ChangeColor(ct.Red, false, ct.None, false)
+			ct.ChangeColor(ct.Red, true, ct.None, false)
 			printstr(m[il[0]:il[1]])
 			ct.ResetColor()
 		}
@@ -99,7 +99,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				break
 			}
 			printstr(m[0:i])
-			ct.ChangeColor(ct.Red, false, ct.None, false)
+			ct.ChangeColor(ct.Red, true, ct.None, false)
 			printstr(m[i:i+l])
 			ct.ResetColor()
 			m = m[i+l:]
