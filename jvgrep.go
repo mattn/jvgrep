@@ -406,9 +406,12 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 	done <- 1
 }
 
-func usage() {
-	fmt.Fprintf(os.Stderr, `Usage: jvgrep [OPTION] [PATTERN] [FILE...]
-  Version %s
+func usage(simple bool) {
+	fmt.Fprintln(os.Stderr, "Usage: jvgrep [OPTION] [PATTERN] [FILE]...")
+	if simple {
+		fmt.Fprintln(os.Stderr, "Try `grep --help' for more information.")
+	} else {
+		fmt.Fprintf(os.Stderr, `Version %s
   -8               : show result as utf8 text
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
@@ -430,13 +433,14 @@ func usage() {
   -Z               : print 0 byte after FILE name
 
 `, version)
-	fmt.Fprintln(os.Stderr, "  Supported Encodings:")
-	for _, enc := range encodings {
-		if enc != "" {
-			fmt.Fprintln(os.Stderr, "    "+enc)
+		fmt.Fprintln(os.Stderr, "  Supported Encodings:")
+		for _, enc := range encodings {
+			if enc != "" {
+				fmt.Fprintln(os.Stderr, "    "+enc)
+			}
 		}
 	}
-	os.Exit(-1)
+	os.Exit(2)
 }
 
 func main() {
@@ -483,36 +487,38 @@ func main() {
 				fmt.Fprintf(os.Stdout, "%s\n", version)
 				os.Exit(0)
 			default:
-				usage()
+				usage(true)
 			}
 			if len(argv[n]) > 2 {
 				argv[n] = "-" + argv[n][2:]
 				n--
 			}
 		} else if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] == '-' {
-			if n == argc-1 {
-				usage()
-			}
-			switch argv[n] {
-			case "--enc":
+			name := argv[n][2:]
+			switch {
+			case name == "enc" && n < argc - 1:
 				encs = argv[n+1]
-			case "--exclude":
+				n++
+			case name == "exclude" && n < argc - 1:
 				exclude = argv[n+1]
-			case "--color":
+				n++
+			case name == "color" && n < argc - 1:
 				color = argv[n+1]
-			case "--null":
+				n++
+			case name == "null":
 				zero = true
+			case name == "help":
+				usage(false)
 			default:
-				usage()
+				usage(true)
 			}
-			n++
 		} else {
 			args = append(args, argv[n])
 		}
 	}
 
 	if len(args) == 0 {
-		usage()
+		usage(true)
 	}
 
 	var err error
@@ -599,7 +605,7 @@ func main() {
 	} else if color == "never" {
 		atty = false
 	} else {
-		usage()
+		usage(true)
 	}
 
 	if atty {
