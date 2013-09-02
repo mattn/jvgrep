@@ -55,16 +55,23 @@ var perl bool
 var basic bool
 var oc mahonia.Encoder
 var color string
+var cwd, _ = os.Getwd()
 
 func matchedline(f string, l int, m string, a *GrepArg) {
 	if !a.color {
 		if f != "" {
+			if fe, err := filepath.Rel(cwd, f); err == nil {
+				f = fe
+			}
 			printstr(fmt.Sprintf("%s:%d:", f, l))
 		}
 		printline(m)
 		return
 	}
 	if f != "" {
+		if fe, err := filepath.Rel(cwd, f); err == nil {
+			f = fe
+		}
 		ct.ChangeColor(ct.Magenta, true, ct.None, false)
 		printstr(f)
 		ct.ChangeColor(ct.Cyan, true, ct.None, false)
