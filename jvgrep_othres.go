@@ -1,7 +1,7 @@
 // +build !windows,!linux
 
-package util
+package main
 
-func IsAtty() bool {
+func isAtty() bool {
 	return false
 }
