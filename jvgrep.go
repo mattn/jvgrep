@@ -409,7 +409,7 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 func usage(simple bool) {
 	fmt.Fprintln(os.Stderr, "Usage: jvgrep [OPTION] [PATTERN] [FILE]...")
 	if simple {
-		fmt.Fprintln(os.Stderr, "Try `grep --help' for more information.")
+		fmt.Fprintln(os.Stderr, "Try `jvgrep --help' for more information.")
 	} else {
 		fmt.Fprintf(os.Stderr, `Version %s
   -8               : show result as utf8 text
