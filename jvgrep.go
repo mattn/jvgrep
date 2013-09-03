@@ -56,7 +56,8 @@ var basic bool
 var oc mahonia.Encoder
 var color string
 var cwd, _ = os.Getwd()
-var zero bool
+var zeroFile bool
+var zeroData bool
 var count = -1
 var fullpath = true
 
@@ -66,7 +67,7 @@ func matchedfile(f string) {
 			f = fe
 		}
 	}
-	if zero {
+	if zeroFile {
 		printstr(f)
 		os.Stdout.Write([]byte{0})
 	} else {
@@ -82,8 +83,8 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 					f = fe
 				}
 			}
-			if zero {
-				printstr(fmt.Sprintf("%s\x00%d:", f, l))
+			if zeroFile {
+				printstr(fmt.Sprintf("%s:%d\x00", f, l))
 			} else {
 				printstr(fmt.Sprintf("%s:%d:", f, l))
 			}
@@ -100,7 +101,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		ct.ChangeColor(ct.Magenta, true, ct.None, false)
 		printstr(f)
 		ct.ChangeColor(ct.Cyan, true, ct.None, false)
-		if zero {
+		if zeroFile {
 			os.Stdout.Write([]byte{0})
 		} else {
 			fmt.Print(":")
@@ -147,6 +148,9 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 
 func printline(s string) {
 	printstr(s + "\n")
+	if zeroData {
+		os.Stdout.Write([]byte{0})
+	}
 }
 
 func printstr(s string) {
@@ -415,7 +419,7 @@ func usage(simple bool) {
   -8               : show result as utf8 text
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
-  -P               : PATTERN is a Perl regular expression
+  -P               : PATTERN is a Perl regular expression (ERE)
   -R               : search files recursively
   -S               : verbose messages
   -V               : print version information and exit
@@ -430,6 +434,7 @@ func usage(simple bool) {
   -n               : print line number with output lines
   -o               : show only the part of a line matching PATTERN
   -v               : select non-matching lines
+  -z               : a data line ends in 0 byte, not newline
   -Z               : print 0 byte after FILE name
 
 `, version)
@@ -481,8 +486,10 @@ func main() {
 					n++
 					continue
 				}
+			case 'z':
+				zeroData = true
 			case 'Z':
-				zero = true
+				zeroFile = true
 			case 'V':
 				fmt.Fprintf(os.Stdout, "%s\n", version)
 				os.Exit(0)
@@ -506,7 +513,9 @@ func main() {
 				color = argv[n+1]
 				n++
 			case name == "null":
-				zero = true
+				zeroFile = true
+			case name == "null-data":
+				zeroData = true
 			case name == "help":
 				usage(false)
 			default:
