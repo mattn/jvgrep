@@ -3,6 +3,8 @@ jvgrep
 
 `jvgrep` is grep for japanese vimmer. you can find text from files that writen in another japanese encodings.
 
+![](http://go-gyazo.appspot.com/8a66f5af5f60da99.png)
+
 Install
 -------
 
