@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"code.google.com/p/mahonia"
 	"fmt"
+	"github.com/daviddengcn/go-colortext"
 	"github.com/mattn/jvgrep/mmap"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"regexp/syntax"
@@ -16,7 +18,7 @@ import (
 	"unicode/utf8"
 )
 
-const version = "3.0"
+const version = "3.5"
 
 var encodings = []string{
 	"ascii",
@@ -32,10 +34,13 @@ type GrepArg struct {
 	pattern interface{}
 	input   interface{}
 	single  bool
+	color   bool
 }
 
+const excludeDefaults = `\.git$|\.svn$|\.hg$|\.svn$|\.o$|\.obj$|\.exe$`
+
 var encs string
-var exclude string = `\.git|\.svn|\.hg|\.svn`
+var exclude string
 var fixed bool
 var ignorecase bool
 var infile string
@@ -48,20 +53,119 @@ var verbose bool
 var utf8out bool
 var perl bool
 var basic bool
+var oc mahonia.Encoder
+var color string
+var cwd, _ = os.Getwd()
+var zeroFile bool
+var zeroData bool
+var count = -1
+var fullpath = true
 
-func printline(s string) bool {
-	var err error
-	if !utf8out {
-		_, err = os.Stdout.WriteString(s + "\n")
-	} else {
-		_, err = syscall.Write(syscall.Stdout, []byte(s + "\n"))
+func matchedfile(f string) {
+	if !fullpath {
+		if fe, err := filepath.Rel(cwd, f); err == nil {
+			f = fe
+		}
 	}
-	return err == nil
+	if zeroFile {
+		printstr(f)
+		os.Stdout.Write([]byte{0})
+	} else {
+		printline(f)
+	}
 }
 
-func errorline(s string) bool {
-	_, err := os.Stderr.WriteString(s + "\n")
-	return err == nil
+func matchedline(f string, l int, m string, a *GrepArg) {
+	if !a.color {
+		if f != "" {
+			if !fullpath {
+				if fe, err := filepath.Rel(cwd, f); err == nil {
+					f = fe
+				}
+			}
+			if zeroFile {
+				printstr(fmt.Sprintf("%s:%d\x00", f, l))
+			} else {
+				printstr(fmt.Sprintf("%s:%d:", f, l))
+			}
+		}
+		printline(m)
+		return
+	}
+	if f != "" {
+		if !fullpath {
+			if fe, err := filepath.Rel(cwd, f); err == nil {
+				f = fe
+			}
+		}
+		ct.ChangeColor(ct.Magenta, true, ct.None, false)
+		printstr(f)
+		ct.ChangeColor(ct.Cyan, true, ct.None, false)
+		if zeroFile {
+			os.Stdout.Write([]byte{0})
+		} else {
+			fmt.Print(":")
+		}
+		ct.ChangeColor(ct.Green, true, ct.None, false)
+		fmt.Print(l)
+		ct.ChangeColor(ct.Cyan, true, ct.None, false)
+		fmt.Print(":")
+		ct.ResetColor()
+	}
+	if re, ok := a.pattern.(*regexp.Regexp); ok {
+		ill := re.FindAllStringIndex(m, -1)
+		if len(ill) == 0 {
+			printline(m)
+			return
+		}
+		for i, il := range ill {
+			if i > 0 {
+				printstr(m[ill[i-1][1]:il[0]])
+			} else {
+				printstr(m[0:il[0]])
+			}
+			ct.ChangeColor(ct.Red, true, ct.None, false)
+			printstr(m[il[0]:il[1]])
+			ct.ResetColor()
+		}
+		printline(m[ill[len(ill)-1][1]:])
+	} else if s, ok := a.pattern.(string); ok {
+		l := len(s)
+		for {
+			i := strings.Index(m, s)
+			if i < 0 {
+				printline(m)
+				break
+			}
+			printstr(m[0:i])
+			ct.ChangeColor(ct.Red, true, ct.None, false)
+			printstr(m[i:i+l])
+			ct.ResetColor()
+			m = m[i+l:]
+		}
+	}
+}
+
+func printline(s string) {
+	printstr(s + "\n")
+	if zeroData {
+		os.Stdout.Write([]byte{0})
+	}
+}
+
+func printstr(s string) {
+	if utf8out {
+		syscall.Write(syscall.Stdout, []byte(s))
+	} else if oc != nil {
+		s = oc.ConvertString(s)
+		syscall.Write(syscall.Stdout, []byte(s))
+	} else {
+		os.Stdout.WriteString(s)
+	}
+}
+
+func errorline(s string) {
+	os.Stderr.WriteString(s + "\n")
 }
 
 func Grep(arg *GrepArg) {
@@ -72,6 +176,9 @@ func Grep(arg *GrepArg) {
 	var err error
 
 	if path, ok = arg.input.(string); ok {
+		if fi, err := os.Stat(path); err == nil && fi.Size() == 0 {
+			return
+		}
 		mf, err := mmap.Open(path)
 		if err != nil {
 			errorline(err.Error())
@@ -102,19 +209,31 @@ func Grep(arg *GrepArg) {
 			if ic == nil {
 				continue
 			}
+			maybe_binary := false
 			if enc == "utf-16" && len(f) > 2 {
 				if f[0] == 0xfe && f[1] == 0xff {
+					ff := make([]byte, len(f))
 					for nn := 0; nn < len(f); nn += 2 {
-						f[nn], f[nn+1] = f[nn+1], f[nn]
+						ff[nn], ff[nn+1] = f[nn+1], f[nn]
+					}
+					f = ff
+				}
+			} else {
+				for _, b := range f {
+					if b < 0x9 {
+						maybe_binary = true
+						break
 					}
 				}
 			}
-			ff, ok := ic.ConvertStringOK(string(f))
-			if !ok {
-				next = -1
-				continue
+			if !maybe_binary {
+				ff, ok := ic.ConvertStringOK(string(f))
+				if !ok {
+					next = -1
+					continue
+				}
+				f = []byte(ff)
 			}
-			f = []byte(ff)
 		}
 		size = len(f)
 		if size == 0 {
@@ -177,11 +296,15 @@ func Grep(arg *GrepArg) {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					printline(path)
+					matchedfile(path)
 					did = true
 					break
 				}
 				for _, m := range matches {
+					if count != -1 {
+						count++
+						continue
+					}
 					if strings.IndexFunc(
 						m, func(r rune) bool {
 							return r < 0x9
@@ -192,7 +315,7 @@ func Grep(arg *GrepArg) {
 					} else {
 						if number {
 							if utf8.ValidString(m) {
-								printline(fmt.Sprintf("%s:%d:%s", path, n, m))
+								matchedline(path, n, m, arg)
 							} else {
 								errorline(fmt.Sprintf("matched binary file: %s", path))
 								did = true
@@ -200,7 +323,7 @@ func Grep(arg *GrepArg) {
 							}
 						} else {
 							if utf8.ValidString(m) {
-								printline(m)
+								matchedline("", 0, m, arg)
 							} else {
 								errorline(fmt.Sprintf("matched binary file: %s", path))
 								did = true
@@ -233,13 +356,18 @@ func Grep(arg *GrepArg) {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					printline(path)
+					matchedfile(path)
 					did = true
 					break
 				}
+				if count != -1 {
+					count++
+					did = true
+					continue
+				}
 				if arg.single && !number {
 					if utf8.Valid(t) {
-						printline(string(t))
+						matchedline("", -1, string(t), arg)
 					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -254,7 +382,7 @@ func Grep(arg *GrepArg) {
 						did = true
 						break
 					} else if utf8.Valid(t) {
-						printline(fmt.Sprintf("%s:%d:%s", path, n, string(t)))
+						matchedline(path, n, string(t), arg)
 					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -282,34 +410,42 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 	done <- 1
 }
 
-func usage() {
-	fmt.Fprintf(os.Stderr, `Usage: jvgrep [OPTION] [PATTERN] [FILE...]
-  Version %s
+func usage(simple bool) {
+	fmt.Fprintln(os.Stderr, "Usage: jvgrep [OPTION] [PATTERN] [FILE]...")
+	if simple {
+		fmt.Fprintln(os.Stderr, "Try `jvgrep --help' for more information.")
+	} else {
+		fmt.Fprintf(os.Stderr, `Version %s
   -8               : show result as utf8 text
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
-  -P               : PATTERN is a Perl regular expression
+  -P               : PATTERN is a Perl regular expression (ERE)
   -R               : search files recursively
   -S               : verbose messages
   -V               : print version information and exit
   --enc encodings  : encodings: comma separated
   --exclude regexp : exclude files: specify as regexp
                      (default: \.git|\.svn|\.hg)
+  --color [=WHEN]  : always/never/auto
+  -c               : count matches
   -f file          : obtain pattern file
   -i               : ignore case(currently fixed only)
   -l               : print only names of FILEs containing matches
   -n               : print line number with output lines
   -o               : show only the part of a line matching PATTERN
   -v               : select non-matching lines
+  -z               : a data line ends in 0 byte, not newline
+  -Z               : print 0 byte after FILE name
 
 `, version)
-	fmt.Fprintln(os.Stderr, "  Supported Encodings:")
-	for _, enc := range encodings {
-		if enc != "" {
-			fmt.Fprintln(os.Stderr, "    "+enc)
+		fmt.Fprintln(os.Stderr, "  Supported Encodings:")
+		for _, enc := range encodings {
+			if enc != "" {
+				fmt.Fprintln(os.Stderr, "    "+enc)
+			}
 		}
 	}
-	os.Exit(-1)
+	os.Exit(2)
 }
 
 func main() {
@@ -328,6 +464,8 @@ func main() {
 				recursive = true
 			case 'S':
 				verbose = true
+			case 'c':
+				count = 0
 			case 'i':
 				ignorecase = true
 			case 'l':
@@ -348,40 +486,51 @@ func main() {
 					n++
 					continue
 				}
+			case 'z':
+				zeroData = true
+			case 'Z':
+				zeroFile = true
 			case 'V':
 				fmt.Fprintf(os.Stdout, "%s\n", version)
 				os.Exit(0)
 			default:
-				usage()
+				usage(true)
 			}
 			if len(argv[n]) > 2 {
 				argv[n] = "-" + argv[n][2:]
 				n--
 			}
 		} else if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] == '-' {
-			if n == argc-1 {
-				usage()
-			}
-			switch argv[n] {
-			case "--enc":
+			name := argv[n][2:]
+			switch {
+			case name == "enc" && n < argc - 1:
 				encs = argv[n+1]
-			case "--exclude":
+				n++
+			case name == "exclude" && n < argc - 1:
 				exclude = argv[n+1]
+				n++
+			case name == "color" && n < argc - 1:
+				color = argv[n+1]
+				n++
+			case name == "null":
+				zeroFile = true
+			case name == "null-data":
+				zeroData = true
+			case name == "help":
+				usage(false)
 			default:
-				usage()
+				usage(true)
 			}
-			n++
 		} else {
 			args = append(args, argv[n])
 		}
 	}
 
 	if len(args) == 0 {
-		usage()
+		usage(true)
 	}
 
 	var err error
-	var errs *string
 	var pattern interface{}
 	if encs != "" {
 		encodings = strings.Split(encs, ",")
@@ -390,6 +539,10 @@ func main() {
 		if enc_env != "" {
 			encodings = strings.Split(enc_env, ",")
 		}
+	}
+	out_enc := os.Getenv("JVGREP_OUTPUT_ENCODING")
+	if out_enc != "" {
+		oc = mahonia.NewEncoder(out_enc)
 	}
 
 	instr := ""
@@ -438,16 +591,45 @@ func main() {
 		}
 	}
 
-	var ere *regexp.Regexp
-	if exclude != "" {
-		ere, err = regexp.Compile(exclude)
-		if errs != nil {
-			errorline(err.Error())
-			os.Exit(-1)
-		}
+	if exclude == "" {
+		exclude = os.Getenv("JVGREP_EXCLUDE")
 	}
+	if exclude == "" {
+		exclude = excludeDefaults
+	}
+	ere, err := regexp.Compile(exclude)
+	if err != nil {
+		errorline(err.Error())
+		os.Exit(-1)
+	}
+
+	atty := false
+	if color == "" {
+		color = os.Getenv("JVGREP_COLOR")
+	}
+	if color == "" || color == "auto" {
+		atty = isAtty()
+	} else if color == "always" {
+		atty = true
+	} else if color == "never" {
+		atty = false
+	} else {
+		usage(true)
+	}
+
+	if atty {
+		sc := make(chan os.Signal, 10)
+		signal.Notify(sc, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+		go func() {
+			for _ = range sc {
+				ct.ResetColor()
+				os.Exit(0)
+			}
+		}()
+	}
+
 	if len(args) == 1 && argindex != 0 {
-		Grep(&GrepArg{pattern, os.Stdin, true})
+		Grep(&GrepArg{pattern, os.Stdin, true, atty})
 		return
 	}
 
@@ -492,15 +674,20 @@ func main() {
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
-			if !recursive {
+			fi, err := os.Stat(path)
+			if err != nil {
+				errorline(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
+				os.Exit(-1)
+			}
+			if !recursive && !fi.IsDir() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, ai == nargs-1}
+				ch <- &GrepArg{pattern, path, ai == nargs-1, atty}
 				continue
 			} else {
 				root = path
-				if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+				if fi.IsDir() {
 					globmask = "**/*"
 				} else {
 					globmask = "**/" + globmask
@@ -516,13 +703,6 @@ func main() {
 				globmask += "/"
 			} else {
 				globmask = "**/" + globmask
-			}
-		}
-		if runtime.GOOS == "windows" {
-			// keep double backslask windows UNC.
-			if len(arg) > 2 && (arg[0:2] == `\\` || arg[0:2] == `//`) {
-				root = "/" + root
-				globmask = "/" + globmask
 			}
 		}
 
@@ -598,11 +778,14 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, false}
+				ch <- &GrepArg{pattern, path, false, atty}
 			}
 			return nil
 		})
 	}
 	ch <- nil
+	if count != -1 {
+		fmt.Println(count)
+	}
 	<-done
 }
