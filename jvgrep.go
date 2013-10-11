@@ -428,6 +428,7 @@ func usage(simple bool) {
                      (default: \.git|\.svn|\.hg)
   --color [=WHEN]  : always/never/auto
   -c               : count matches
+  -r               : print relative path
   -f file          : obtain pattern file
   -i               : ignore case(currently fixed only)
   -l               : print only names of FILEs containing matches
@@ -466,6 +467,8 @@ func main() {
 				verbose = true
 			case 'c':
 				count = 0
+			case 'r':
+				fullpath = false
 			case 'i':
 				ignorecase = true
 			case 'l':
