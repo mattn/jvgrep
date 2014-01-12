@@ -37,7 +37,7 @@ type GrepArg struct {
 	color   bool
 }
 
-const excludeDefaults = `\.git$|\.svn$|\.hg$|\.svn$|\.o$|\.obj$|\.exe$`
+const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.exe$`
 
 var encs string
 var exclude string
