@@ -39,27 +39,27 @@ type GrepArg struct {
 
 const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.exe$`
 
-var encs string
-var exclude string
-var fixed bool
-var ignorecase bool
-var infile string
-var invert bool
-var only bool
-var list bool
-var number bool
-var recursive bool
-var verbose bool
-var utf8out bool
-var perl bool
-var basic bool
-var oc mahonia.Encoder
-var color string
-var cwd, _ = os.Getwd()
-var zeroFile bool
-var zeroData bool
-var count = -1
-var fullpath = true
+var encs string         // encodings
+var exclude string      // exclude pattern
+var fixed bool          // fixed search
+var ignorecase bool     // ignorecase
+var infile string       // input filename
+var invert bool         // invert search
+var only bool           // show only matched
+var list bool           // show the list matches
+var number bool         // show line number
+var recursive bool      // recursible search
+var verbose bool        // verbose output
+var utf8out bool        // output utf-8 strings
+var perl bool           // perl regexp syntax
+var basic bool          // basic regexp syntax
+var oc mahonia.Encoder  // mahonia encoder
+var color string        // color operation
+var cwd, _ = os.Getwd() // current directory
+var zeroFile bool       // write \0 after the filename
+var zeroData bool       // write \0 after the match
+var count = -1          // count of matches
+var fullpath = true     // show full path
 
 func matchedfile(f string) {
 	if !fullpath {
