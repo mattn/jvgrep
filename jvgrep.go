@@ -426,8 +426,8 @@ func Grep(arg *GrepArg) {
 							for i := 0; i < len(lines); i++ {
 								matchedline(path, -n-i-1, lines[i], arg)
 							}
+							os.Stdout.WriteString("---\n")
 						}
-						os.Stdout.WriteString("---\n")
 					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
