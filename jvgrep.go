@@ -395,13 +395,9 @@ func Grep(arg *GrepArg) {
 						} else {
 							bprev, bnext := next-l-2, next-l-2
 							lines := make([]string, 0)
-							for i := 0; i < before; i++ {
+							for i := 0; i < before && bprev > 0; i++ {
 								for {
-									if bprev < 1 {
-										i = before
-										break
-									}
-									if f[bprev-1] == '\n' {
+									if bprev == 0 || f[bprev-1] == '\n' {
 										lines = append(lines, string(f[bprev:bnext]))
 										bnext = bprev - 1
 										bprev--
@@ -416,15 +412,10 @@ func Grep(arg *GrepArg) {
 							matchedline(path, n, string(t), arg)
 							lines = make([]string, 0)
 							aprev, anext := next, next
-							for i := 0; i < after; i++ {
+							for i := 0; i < after && anext < size; i++ {
 								for {
-									if anext >= size {
-										anext = -1
-										i = after
-										break
-									}
-									if f[anext] == '\n' {
-										matchedline(path, -n-i, string(f[aprev:anext]), arg)
+									if anext == size || f[anext] == '\n' {
+										lines = append(lines, string(f[aprev:anext]))
 										aprev = anext + 1
 										anext++
 										break
