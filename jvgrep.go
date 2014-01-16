@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"regexp/syntax"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"unicode/utf8"
@@ -60,6 +61,8 @@ var zeroFile bool       // write \0 after the filename
 var zeroData bool       // write \0 after the match
 var count = -1          // count of matches
 var fullpath = true     // show full path
+var after = 0           // show after lines
+var before = 0          // show before lines
 
 func matchedfile(f string) {
 	if !fullpath {
@@ -76,6 +79,11 @@ func matchedfile(f string) {
 }
 
 func matchedline(f string, l int, m string, a *GrepArg) {
+	lc := ':'
+	if l < 0 {
+		lc = '-'
+		l = -l
+	}
 	if !a.color {
 		if f != "" {
 			if !fullpath {
@@ -84,9 +92,9 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				}
 			}
 			if zeroFile {
-				printstr(fmt.Sprintf("%s:%d\x00", f, l))
+				printstr(fmt.Sprintf("%s:%d\x00", f, lc, l))
 			} else {
-				printstr(fmt.Sprintf("%s:%d:", f, l))
+				printstr(fmt.Sprintf("%s:%d%c", f, l, lc))
 			}
 		}
 		printline(m)
@@ -109,7 +117,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		ct.ChangeColor(ct.Green, true, ct.None, false)
 		fmt.Print(l)
 		ct.ChangeColor(ct.Cyan, true, ct.None, false)
-		fmt.Print(":")
+		fmt.Print(string(lc))
 		ct.ResetColor()
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
@@ -382,7 +390,53 @@ func Grep(arg *GrepArg) {
 						did = true
 						break
 					} else if utf8.Valid(t) {
-						matchedline(path, n, string(t), arg)
+						if after <= 0 && before <= 0 {
+							matchedline(path, n, string(t), arg)
+						} else {
+							bprev, bnext := next-l-2, next-l-2
+							lines := make([]string, 0)
+							for i := 0; i < before; i++ {
+								for {
+									if bprev < 1 {
+										i = before
+										break
+									}
+									if f[bprev-1] == '\n' {
+										lines = append(lines, string(f[bprev:bnext]))
+										bnext = bprev - 1
+										bprev--
+										break
+									}
+									bprev--
+								}
+							}
+							for i := len(lines); i > 0; i-- {
+								matchedline(path, i-n, lines[i-1], arg)
+							}
+							matchedline(path, n, string(t), arg)
+							lines = make([]string, 0)
+							aprev, anext := next, next
+							for i := 0; i < after; i++ {
+								for {
+									if anext >= size {
+										anext = -1
+										i = after
+										break
+									}
+									if f[anext] == '\n' {
+										matchedline(path, -n-i, string(f[aprev:anext]), arg)
+										aprev = anext + 1
+										anext++
+										break
+									}
+									anext++
+								}
+							}
+							for i := 0; i < len(lines); i++ {
+								matchedline(path, -n-i-1, lines[i], arg)
+							}
+						}
+						os.Stdout.WriteString("---\n")
 					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -457,6 +511,18 @@ func main() {
 	for n := 1; n < argc; n++ {
 		if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] != '-' {
 			switch argv[n][1] {
+			case 'A':
+				if n < argc-1 {
+					after, _ = strconv.Atoi(argv[n+1])
+					n++
+					continue
+				}
+			case 'B':
+				if n < argc-1 {
+					before, _ = strconv.Atoi(argv[n+1])
+					n++
+					continue
+				}
 			case '8':
 				utf8out = true
 			case 'F':
