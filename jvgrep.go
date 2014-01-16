@@ -139,7 +139,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 			}
 			printstr(m[0:i])
 			ct.ChangeColor(ct.Red, true, ct.None, false)
-			printstr(m[i:i+l])
+			printstr(m[i : i+l])
 			ct.ResetColor()
 			m = m[i+l:]
 		}
@@ -506,13 +506,13 @@ func main() {
 		} else if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] == '-' {
 			name := argv[n][2:]
 			switch {
-			case name == "enc" && n < argc - 1:
+			case name == "enc" && n < argc-1:
 				encs = argv[n+1]
 				n++
-			case name == "exclude" && n < argc - 1:
+			case name == "exclude" && n < argc-1:
 				exclude = argv[n+1]
 				n++
-			case name == "color" && n < argc - 1:
+			case name == "color" && n < argc-1:
 				color = argv[n+1]
 				n++
 			case name == "null":
