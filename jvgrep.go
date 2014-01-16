@@ -461,16 +461,21 @@ func usage(simple bool) {
 		fmt.Fprintln(os.Stderr, "Try `jvgrep --help' for more information.")
 	} else {
 		fmt.Fprintf(os.Stderr, `Version %s
-  -8               : show result as utf8 text
+Regexp selection and interpretation:
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
   -P               : PATTERN is a Perl regular expression (ERE)
-  -R               : search files recursively
+
+Miscellaneous:
   -S               : verbose messages
   -V               : print version information and exit
+
+Output control:
+  -8               : show result as utf8 text
+  -R               : search files recursively
   --enc encodings  : encodings: comma separated
   --exclude regexp : exclude files: specify as regexp
-                     (default: \.git|\.svn|\.hg)
+                     (default: %s)
   --color [=WHEN]  : always/never/auto
   -c               : count matches
   -r               : print relative path
@@ -483,7 +488,10 @@ func usage(simple bool) {
   -z               : a data line ends in 0 byte, not newline
   -Z               : print 0 byte after FILE name
 
-`, version)
+Context control:
+  -B               : print NUM lines of leading context
+  -A               : print NUM lines of trailing context
+`, version, excludeDefaults)
 		fmt.Fprintln(os.Stderr, "  Supported Encodings:")
 		for _, enc := range encodings {
 			if enc != "" {
