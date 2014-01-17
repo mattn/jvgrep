@@ -59,7 +59,8 @@ var color string        // color operation
 var cwd, _ = os.Getwd() // current directory
 var zeroFile bool       // write \0 after the filename
 var zeroData bool       // write \0 after the match
-var count = -1          // count of matches
+var countMatch = 0      // count of matches
+var count bool          // count of matches
 var fullpath = true     // show full path
 var after = 0           // show after lines
 var before = 0          // show before lines
@@ -309,8 +310,8 @@ func Grep(arg *GrepArg) {
 					break
 				}
 				for _, m := range matches {
-					if count != -1 {
-						count++
+					countMatch++
+					if count {
 						continue
 					}
 					if strings.IndexFunc(
@@ -368,8 +369,8 @@ func Grep(arg *GrepArg) {
 					did = true
 					break
 				}
-				if count != -1 {
-					count++
+				countMatch++
+				if count {
 					did = true
 					continue
 				}
@@ -393,6 +394,9 @@ func Grep(arg *GrepArg) {
 						if after <= 0 && before <= 0 {
 							matchedline(path, n, string(t), arg)
 						} else {
+							if countMatch > 1 {
+								os.Stdout.WriteString("---\n")
+							}
 							bprev, bnext := next-l-2, next-l-2
 							lines := make([]string, 0)
 							for i := 0; i < before && bprev > 0; i++ {
@@ -412,7 +416,7 @@ func Grep(arg *GrepArg) {
 							matchedline(path, n, string(t), arg)
 							lines = make([]string, 0)
 							aprev, anext := next, next
-							for i := 0; i < after && anext < size; i++ {
+							for i := 0; i < after && anext >= 0 && anext < size; i++ {
 								for {
 									if anext == size || f[anext] == '\n' {
 										lines = append(lines, string(f[aprev:anext]))
@@ -426,7 +430,6 @@ func Grep(arg *GrepArg) {
 							for i := 0; i < len(lines); i++ {
 								matchedline(path, -n-i-1, lines[i], arg)
 							}
-							os.Stdout.WriteString("---\n")
 						}
 					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
@@ -531,7 +534,7 @@ func main() {
 			case 'S':
 				verbose = true
 			case 'c':
-				count = 0
+				count = true
 			case 'r':
 				fullpath = false
 			case 'i':
@@ -852,8 +855,8 @@ func main() {
 		})
 	}
 	ch <- nil
-	if count != -1 {
-		fmt.Println(count)
+	if count {
+		fmt.Println(countMatch)
 	}
 	<-done
 }
