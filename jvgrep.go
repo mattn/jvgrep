@@ -190,7 +190,7 @@ func Grep(arg *GrepArg) {
 		}
 		mf, err := mmap.Open(path)
 		if err != nil {
-			errorline(err.Error())
+			errorline(err.Error() + ": " + path)
 			return
 		}
 		defer mf.Close()
@@ -198,7 +198,7 @@ func Grep(arg *GrepArg) {
 	} else if stdin, ok = arg.input.(*os.File); ok {
 		f, err = ioutil.ReadAll(stdin)
 		if err != nil {
-			errorline(err.Error())
+			errorline(err.Error() + ": stdin")
 			return
 		}
 		path = "stdin"
@@ -845,7 +845,7 @@ func main() {
 				return filepath.SkipDir
 			}
 
-			if fre.MatchString(path) {
+			if fre.MatchString(path) && info.Mode().IsRegular() {
 				if verbose {
 					println("search:", path)
 				}
