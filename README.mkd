@@ -59,7 +59,6 @@ Supported Encodings
 -------------------
 
 * iso-2022-jp
-* euc-jp
 * utf-8
 * ucs-2
 * euc-jp
