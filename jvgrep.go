@@ -479,7 +479,7 @@ Output control:
   --enc encodings  : encodings: comma separated
   --exclude regexp : exclude files: specify as regexp
                      (default: %s)
-  --color [=WHEN]  : always/never/auto
+  --color [WHEN]   : always/never/auto
   -c               : count matches
   -r               : print relative path
   -f file          : obtain pattern file
