@@ -72,3 +72,12 @@ Add following to your vimrc
 
     set grepprg=jvgrep
 
+Authors
+-------
+
+Yasuhiro Matsumoto
+
+License
+-------
+
+under the MIT License: http://mattn.mit-license.org/2013
