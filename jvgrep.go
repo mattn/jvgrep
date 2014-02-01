@@ -574,12 +574,18 @@ func main() {
 		} else if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] == '-' {
 			name := argv[n][2:]
 			switch {
+			case strings.HasPrefix(name, "enc="):
+				encs = name[4:]
 			case name == "enc" && n < argc-1:
 				encs = argv[n+1]
 				n++
+			case strings.HasPrefix(name, "exclude"):
+				exclude = name[7:]
 			case name == "exclude" && n < argc-1:
 				exclude = argv[n+1]
 				n++
+			case strings.HasPrefix(name, "color="):
+				color = name[6:]
 			case name == "color" && n < argc-1:
 				color = argv[n+1]
 				n++
