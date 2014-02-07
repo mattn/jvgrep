@@ -3,7 +3,7 @@ VERSION=`../jvgrep --help 2>&1 | grep ^Version | sed 's/Version //' 2> /dev/null
 AUTHOR='mattn <mattn.jp@gmail.com>'
 SERIES=1
 PACKAGE=jvgrep
-Ubuntus=('precise' 'quantal' 'raring')
+Ubuntus=('quantal' 'raring' 'saucy')
 LPUSER=mattn
 WORKDIR=/tmp/launchpad
 

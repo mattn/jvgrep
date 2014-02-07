@@ -1,6 +1,9 @@
 VERSION=`./jvgrep -V`
 
 jvgrep: jvgrep.go
+	go get code.google.com/p/mahonia
+	go get github.com/daviddengcn/go-colortext
+	go get github.com/mattn/jvgrep/mmap
 	go build -x .
 
 package: jvgrep.exe
