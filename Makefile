@@ -13,3 +13,6 @@ package: jvgrep.exe
 
 upload:
 	github-upload jvgrep-win32-$(VERSION).tar.gz mattn/jvgrep
+
+dist:
+	git archive --format=tar --prefix=jvgrep-$(VERSION)/ HEAD | gzip > jvgrep-$(VERSION).tar.gz

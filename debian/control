@@ -1,0 +1,17 @@
+Source: jvgrep
+Section: utils
+Priority: extra
+Maintainer: Yasuhiro Matsumoto <mattn.jp@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), golang
+Standards-Version: 3.9.3
+Homepage: http://github.com/mattn/jvgrep
+#Vcs-Git: git://git.debian.org/collab-maint/jvgrep.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/jvgrep.git;a=summary
+
+Package: jvgrep
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: A grep utlitify that can match texts for some character encodings.
+  For japanese, there are some character encodings. For example, shift_jis,
+  euc-jp, iso-2022-jp also utf-8. So we need grep that can match some character
+  encodings.

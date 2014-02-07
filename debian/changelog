@@ -1,0 +1,185 @@
+jvgrep (3.6-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:54:00 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:53:22 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:52:42 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:50:48 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:50:28 +0900
+
+jvgrep (3.6-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:49:00 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:48:32 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:48:02 +0900
+
+jvgrep (3.6-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:21:10 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:20:39 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:19:34 +0900
+
+jvgrep (3.6-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:12:24 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:12:04 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 17:11:44 +0900
+
+jvgrep (3.6-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:57:06 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:56:46 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:56:27 +0900
+
+jvgrep (3.6-1raring) raring; urgency=low
+
+  * backport to dist raring
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:50:14 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:49:53 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:49:33 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:48:47 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:48:16 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:46:47 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:46:38 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:46:22 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:45:34 +0900
+
+jvgrep (3.6-1quantal) quantal; urgency=low
+
+  * backport to dist quantal
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:44:32 +0900
+
+jvgrep (3.6-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:44:26 +0900
+
+jvgrep (-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:44:14 +0900
+
+jvgrep (-1precise) precise; urgency=low
+
+  * backport to dist precise
+
+ -- Yasuhiro Matsumoto <mattn@boofy>  Fri, 07 Feb 2014 16:43:56 +0900
+
+jvgrep (3.6-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Yasuhiro Matsumoto <mattn.jp@gmail.com>  Fri, 07 Feb 2014 15:46:21 +0900
