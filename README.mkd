@@ -30,6 +30,7 @@ Usage
     --exclude regexp : exclude files: specify as regexp
                        (default: \.git|\.svn|\.hg)
     --color [=WHEN]  : always/never/auto
+    -r               : print relative path
     -f file          : obtain pattern file
     -i               : ignore case(currently fixed only)
     -l               : print only names of FILEs containing matches
@@ -58,7 +59,6 @@ Supported Encodings
 -------------------
 
 * iso-2022-jp
-* euc-jp
 * utf-8
 * ucs-2
 * euc-jp
@@ -72,3 +72,12 @@ Add following to your vimrc
 
     set grepprg=jvgrep
 
+Authors
+-------
+
+Yasuhiro Matsumoto
+
+License
+-------
+
+under the MIT License: http://mattn.mit-license.org/2013

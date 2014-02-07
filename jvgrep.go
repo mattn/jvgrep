@@ -13,12 +13,13 @@ import (
 	"regexp"
 	"regexp/syntax"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"unicode/utf8"
 )
 
-const version = "3.5"
+const version = "3.6"
 
 var encodings = []string{
 	"ascii",
@@ -37,29 +38,32 @@ type GrepArg struct {
 	color   bool
 }
 
-const excludeDefaults = `\.git$|\.svn$|\.hg$|\.svn$|\.o$|\.obj$|\.exe$`
+const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.exe$`
 
-var encs string
-var exclude string
-var fixed bool
-var ignorecase bool
-var infile string
-var invert bool
-var only bool
-var list bool
-var number bool
-var recursive bool
-var verbose bool
-var utf8out bool
-var perl bool
-var basic bool
-var oc mahonia.Encoder
-var color string
-var cwd, _ = os.Getwd()
-var zeroFile bool
-var zeroData bool
-var count = -1
-var fullpath = true
+var encs string         // encodings
+var exclude string      // exclude pattern
+var fixed bool          // fixed search
+var ignorecase bool     // ignorecase
+var infile string       // input filename
+var invert bool         // invert search
+var only bool           // show only matched
+var list bool           // show the list matches
+var number bool         // show line number
+var recursive bool      // recursible search
+var verbose bool        // verbose output
+var utf8out bool        // output utf-8 strings
+var perl bool           // perl regexp syntax
+var basic bool          // basic regexp syntax
+var oc mahonia.Encoder  // mahonia encoder
+var color string        // color operation
+var cwd, _ = os.Getwd() // current directory
+var zeroFile bool       // write \0 after the filename
+var zeroData bool       // write \0 after the match
+var countMatch = 0      // count of matches
+var count bool          // count of matches
+var fullpath = true     // show full path
+var after = 0           // show after lines
+var before = 0          // show before lines
 
 func matchedfile(f string) {
 	if !fullpath {
@@ -76,6 +80,11 @@ func matchedfile(f string) {
 }
 
 func matchedline(f string, l int, m string, a *GrepArg) {
+	lc := ':'
+	if l < 0 {
+		lc = '-'
+		l = -l
+	}
 	if !a.color {
 		if f != "" {
 			if !fullpath {
@@ -84,9 +93,9 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				}
 			}
 			if zeroFile {
-				printstr(fmt.Sprintf("%s:%d\x00", f, l))
+				printstr(fmt.Sprintf("%s:%d\x00", f, lc, l))
 			} else {
-				printstr(fmt.Sprintf("%s:%d:", f, l))
+				printstr(fmt.Sprintf("%s:%d%c", f, l, lc))
 			}
 		}
 		printline(m)
@@ -109,7 +118,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		ct.ChangeColor(ct.Green, true, ct.None, false)
 		fmt.Print(l)
 		ct.ChangeColor(ct.Cyan, true, ct.None, false)
-		fmt.Print(":")
+		fmt.Print(string(lc))
 		ct.ResetColor()
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
@@ -139,7 +148,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 			}
 			printstr(m[0:i])
 			ct.ChangeColor(ct.Red, true, ct.None, false)
-			printstr(m[i:i+l])
+			printstr(m[i : i+l])
 			ct.ResetColor()
 			m = m[i+l:]
 		}
@@ -181,7 +190,7 @@ func Grep(arg *GrepArg) {
 		}
 		mf, err := mmap.Open(path)
 		if err != nil {
-			errorline(err.Error())
+			errorline(err.Error() + ": " + path)
 			return
 		}
 		defer mf.Close()
@@ -189,7 +198,7 @@ func Grep(arg *GrepArg) {
 	} else if stdin, ok = arg.input.(*os.File); ok {
 		f, err = ioutil.ReadAll(stdin)
 		if err != nil {
-			errorline(err.Error())
+			errorline(err.Error() + ": stdin")
 			return
 		}
 		path = "stdin"
@@ -301,8 +310,8 @@ func Grep(arg *GrepArg) {
 					break
 				}
 				for _, m := range matches {
-					if count != -1 {
-						count++
+					countMatch++
+					if count {
 						continue
 					}
 					if strings.IndexFunc(
@@ -360,8 +369,8 @@ func Grep(arg *GrepArg) {
 					did = true
 					break
 				}
-				if count != -1 {
-					count++
+				countMatch++
+				if count {
 					did = true
 					continue
 				}
@@ -382,7 +391,46 @@ func Grep(arg *GrepArg) {
 						did = true
 						break
 					} else if utf8.Valid(t) {
-						matchedline(path, n, string(t), arg)
+						if after <= 0 && before <= 0 {
+							matchedline(path, n, string(t), arg)
+						} else {
+							if countMatch > 1 {
+								os.Stdout.WriteString("---\n")
+							}
+							bprev, bnext := next-l-2, next-l-2
+							lines := make([]string, 0)
+							for i := 0; i < before && bprev > 0; i++ {
+								for {
+									if bprev == 0 || f[bprev-1] == '\n' {
+										lines = append(lines, string(f[bprev:bnext]))
+										bnext = bprev - 1
+										bprev--
+										break
+									}
+									bprev--
+								}
+							}
+							for i := len(lines); i > 0; i-- {
+								matchedline(path, i-n, lines[i-1], arg)
+							}
+							matchedline(path, n, string(t), arg)
+							lines = make([]string, 0)
+							aprev, anext := next, next
+							for i := 0; i < after && anext >= 0 && anext < size; i++ {
+								for {
+									if anext == size || f[anext] == '\n' {
+										lines = append(lines, string(f[aprev:anext]))
+										aprev = anext + 1
+										anext++
+										break
+									}
+									anext++
+								}
+							}
+							for i := 0; i < len(lines); i++ {
+								matchedline(path, -n-i-1, lines[i], arg)
+							}
+						}
 					} else {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -416,18 +464,24 @@ func usage(simple bool) {
 		fmt.Fprintln(os.Stderr, "Try `jvgrep --help' for more information.")
 	} else {
 		fmt.Fprintf(os.Stderr, `Version %s
-  -8               : show result as utf8 text
+Regexp selection and interpretation:
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
   -P               : PATTERN is a Perl regular expression (ERE)
-  -R               : search files recursively
+
+Miscellaneous:
   -S               : verbose messages
   -V               : print version information and exit
+
+Output control:
+  -8               : show result as utf8 text
+  -R               : search files recursively
   --enc encodings  : encodings: comma separated
   --exclude regexp : exclude files: specify as regexp
-                     (default: \.git|\.svn|\.hg)
+                     (default: %s)
   --color [=WHEN]  : always/never/auto
   -c               : count matches
+  -r               : print relative path
   -f file          : obtain pattern file
   -i               : ignore case(currently fixed only)
   -l               : print only names of FILEs containing matches
@@ -437,7 +491,10 @@ func usage(simple bool) {
   -z               : a data line ends in 0 byte, not newline
   -Z               : print 0 byte after FILE name
 
-`, version)
+Context control:
+  -B               : print NUM lines of leading context
+  -A               : print NUM lines of trailing context
+`, version, excludeDefaults)
 		fmt.Fprintln(os.Stderr, "  Supported Encodings:")
 		for _, enc := range encodings {
 			if enc != "" {
@@ -456,6 +513,18 @@ func main() {
 	for n := 1; n < argc; n++ {
 		if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] != '-' {
 			switch argv[n][1] {
+			case 'A':
+				if n < argc-1 {
+					after, _ = strconv.Atoi(argv[n+1])
+					n++
+					continue
+				}
+			case 'B':
+				if n < argc-1 {
+					before, _ = strconv.Atoi(argv[n+1])
+					n++
+					continue
+				}
 			case '8':
 				utf8out = true
 			case 'F':
@@ -465,7 +534,9 @@ func main() {
 			case 'S':
 				verbose = true
 			case 'c':
-				count = 0
+				count = true
+			case 'r':
+				fullpath = false
 			case 'i':
 				ignorecase = true
 			case 'l':
@@ -503,13 +574,19 @@ func main() {
 		} else if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] == '-' {
 			name := argv[n][2:]
 			switch {
-			case name == "enc" && n < argc - 1:
+			case strings.HasPrefix(name, "enc="):
+				encs = name[4:]
+			case name == "enc" && n < argc-1:
 				encs = argv[n+1]
 				n++
-			case name == "exclude" && n < argc - 1:
+			case strings.HasPrefix(name, "exclude"):
+				exclude = name[7:]
+			case name == "exclude" && n < argc-1:
 				exclude = argv[n+1]
 				n++
-			case name == "color" && n < argc - 1:
+			case strings.HasPrefix(name, "color="):
+				color = name[6:]
+			case name == "color" && n < argc-1:
 				color = argv[n+1]
 				n++
 			case name == "null":
@@ -774,7 +851,7 @@ func main() {
 				return filepath.SkipDir
 			}
 
-			if fre.MatchString(path) {
+			if fre.MatchString(path) && info.Mode().IsRegular() {
 				if verbose {
 					println("search:", path)
 				}
@@ -784,8 +861,8 @@ func main() {
 		})
 	}
 	ch <- nil
-	if count != -1 {
-		fmt.Println(count)
+	if count {
+		fmt.Println(countMatch)
 	}
 	<-done
 }
