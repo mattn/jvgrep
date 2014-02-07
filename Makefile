@@ -1,4 +1,4 @@
-VERSION=`./jvgrep -V`
+VERSION=$(shell ./jvgrep --help 2>&1 | grep ^Version | sed 's/Version //')
 
 jvgrep: jvgrep.go
 	go get code.google.com/p/mahonia
@@ -17,5 +17,5 @@ package: jvgrep.exe
 upload:
 	github-upload jvgrep-win32-$(VERSION).tar.gz mattn/jvgrep
 
-dist:
+dist: jvgrep
 	git archive --format=tar --prefix=jvgrep-$(VERSION)/ HEAD | gzip > jvgrep-$(VERSION).tar.gz
