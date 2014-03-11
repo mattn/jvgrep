@@ -40,30 +40,33 @@ type GrepArg struct {
 
 const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.exe$`
 
-var encs string         // encodings
-var exclude string      // exclude pattern
-var fixed bool          // fixed search
-var ignorecase bool     // ignorecase
-var infile string       // input filename
-var invert bool         // invert search
-var only bool           // show only matched
-var list bool           // show the list matches
-var number bool         // show line number
-var recursive bool      // recursible search
-var verbose bool        // verbose output
-var utf8out bool        // output utf-8 strings
-var perl bool           // perl regexp syntax
-var basic bool          // basic regexp syntax
-var oc mahonia.Encoder  // mahonia encoder
-var color string        // color operation
-var cwd, _ = os.Getwd() // current directory
-var zeroFile bool       // write \0 after the filename
-var zeroData bool       // write \0 after the match
-var countMatch = 0      // count of matches
-var count bool          // count of matches
-var fullpath = true     // show full path
-var after = 0           // show after lines
-var before = 0          // show before lines
+var (
+	encs       string          // encodings
+	exclude    string          // exclude pattern
+	fixed      bool            // fixed search
+	ignorecase bool            // ignorecase
+	infile     string          // input filename
+	invert     bool            // invert search
+	only       bool            // show only matched
+	list       bool            // show the list matches
+	number     bool            // show line number
+	recursive  bool            // recursible search
+	verbose    bool            // verbose output
+	utf8out    bool            // output utf-8 strings
+	perl       bool            // perl regexp syntax
+	basic      bool            // basic regexp syntax
+	oc         mahonia.Encoder // mahonia encoder
+	color      string          // color operation
+	cwd, _     = os.Getwd()    // current directory
+	zeroFile   bool            // write \0 after the filename
+	zeroData   bool            // write \0 after the match
+	countMatch = 0             // count of matches
+	count      bool            // count of matches
+	fullpath   = true          // show full path
+	after      = 0             // show after lines
+	before     = 0             // show before lines
+	separator  = ":"           // column separator
+)
 
 func matchedfile(f string) {
 	if !fullpath {
@@ -80,9 +83,9 @@ func matchedfile(f string) {
 }
 
 func matchedline(f string, l int, m string, a *GrepArg) {
-	lc := ':'
+	lc := separator
 	if l < 0 {
-		lc = '-'
+		lc = "-"
 		l = -l
 	}
 	if !a.color {
@@ -93,9 +96,9 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				}
 			}
 			if zeroFile {
-				printstr(fmt.Sprintf("%s:%d\x00", f, lc, l))
+				printstr(fmt.Sprintf("%s%s%d\x00", f, separator, l))
 			} else {
-				printstr(fmt.Sprintf("%s:%d%c", f, l, lc))
+				printstr(fmt.Sprintf("%s%s%d%s", f, separator, l, lc))
 			}
 		}
 		printline(m)
@@ -113,12 +116,12 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		if zeroFile {
 			os.Stdout.Write([]byte{0})
 		} else {
-			fmt.Print(":")
+			fmt.Print(separator)
 		}
 		ct.ChangeColor(ct.Green, true, ct.None, false)
 		fmt.Print(l)
 		ct.ChangeColor(ct.Cyan, true, ct.None, false)
-		fmt.Print(string(lc))
+		fmt.Print(separator)
 		ct.ResetColor()
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
@@ -588,6 +591,11 @@ func main() {
 				color = name[6:]
 			case name == "color" && n < argc-1:
 				color = argv[n+1]
+				n++
+			case strings.HasPrefix(name, "separator="):
+				separator = name[10:]
+			case name == "separator":
+				separator = argv[n+1]
 				n++
 			case name == "null":
 				zeroFile = true
