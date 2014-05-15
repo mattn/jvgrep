@@ -582,8 +582,8 @@ func main() {
 			case name == "enc" && n < argc-1:
 				encs = argv[n+1]
 				n++
-			case strings.HasPrefix(name, "exclude"):
-				exclude = name[7:]
+			case strings.HasPrefix(name, "exclude="):
+				exclude = name[8:]
 			case name == "exclude" && n < argc-1:
 				exclude = argv[n+1]
 				n++
