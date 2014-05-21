@@ -1,9 +1,11 @@
 VERSION=$(shell ./jvgrep --help 2>&1 | grep ^Version | sed 's/Version //')
 
+all : jvgrep
+
 jvgrep: jvgrep.go
-	go get code.google.com/p/mahonia
-	go get github.com/daviddengcn/go-colortext
-	go get github.com/mattn/jvgrep/mmap
+	go get -u -x code.google.com/p/mahonia
+	go get -u -x github.com/daviddengcn/go-colortext
+	go get -u -x github.com/mattn/jvgrep/mmap
 	go build -x .
 
 package: jvgrep.exe
@@ -19,3 +21,7 @@ upload:
 
 dist: jvgrep
 	git archive --format=tar --prefix=jvgrep-$(VERSION)/ HEAD | gzip > jvgrep-$(VERSION).tar.gz
+
+clean :
+	go clean
+	-rm -f jvgrep
