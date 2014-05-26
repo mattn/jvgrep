@@ -721,7 +721,7 @@ func main() {
 	envre := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 	globmask := ""
 
-	ch := make(chan *GrepArg)
+	ch := make(chan *GrepArg, 10)
 	done := make(chan int)
 	go GoGrep(ch, done)
 	nargs := len(args[argindex:])
