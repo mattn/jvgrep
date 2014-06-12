@@ -30,19 +30,19 @@ deploy:
         tag: $RELEASE_TAG
     - wercker/github-upload-asset:
         token: $GITHUB_TOKEN
-        file: ghq_linux_386
+        file: jvgrep_linux_386
     - wercker/github-upload-asset:
         token: $GITHUB_TOKEN
-        file: ghq_linux_amd64
+        file: jvgrep_linux_amd64
     - wercker/github-upload-asset:
         token: $GITHUB_TOKEN
-        file: ghq_darwin_386
+        file: jvgrep_darwin_386
     - wercker/github-upload-asset:
         token: $GITHUB_TOKEN
-        file: ghq_darwin_amd64
+        file: jvgrep_darwin_amd64
     - wercker/github-upload-asset:
         token: $GITHUB_TOKEN
-        file: ghq_windows_386.exe
+        file: jvgrep_windows_386.exe
     - wercker/github-upload-asset:
         token: $GITHUB_TOKEN
-        file: ghq_windows_amd64.exe
+        file: jvgrep_windows_amd64.exe
