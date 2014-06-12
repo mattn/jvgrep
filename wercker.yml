@@ -1,7 +1,6 @@
 box: wercker/default
 steps:
   - wercker/step-github-create-release
-  #- motemen/github-create-release@1.0.4
 deploy:
     steps:
         - script:
