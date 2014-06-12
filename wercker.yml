@@ -9,4 +9,3 @@ deploy:
         - github-create-release:
             token: $GITHUB_TOKEN
             tag: v$APP_VERSION
-
