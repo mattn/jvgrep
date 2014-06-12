@@ -8,5 +8,5 @@ deploy:
             code: export APP_VERSION=$(make && ./jvgrep -V)
         - github-create-release:
             token: $GITHUB_TOKEN
-            tag: $APP_VERSION
+            tag: v$APP_VERSION
 
