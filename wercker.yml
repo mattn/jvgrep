@@ -1,1 +1,3 @@
 box: wercker/default
+steps:
+  - motemen/github-create-release@1.0.4
