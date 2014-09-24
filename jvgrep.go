@@ -2,10 +2,7 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/mahonia"
 	"fmt"
-	"github.com/daviddengcn/go-colortext"
-	"github.com/mattn/jvgrep/mmap"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -17,6 +14,11 @@ import (
 	"strings"
 	"syscall"
 	"unicode/utf8"
+
+	"code.google.com/p/mahonia"
+	"github.com/daviddengcn/go-colortext"
+	"github.com/mattn/go-isatty"
+	"github.com/mattn/jvgrep/mmap"
 )
 
 const version = "4.0"
@@ -693,7 +695,7 @@ func main() {
 		color = os.Getenv("JVGREP_COLOR")
 	}
 	if color == "" || color == "auto" {
-		atty = isAtty()
+		atty = isatty.IsTerminal(os.Stdout.Fd())
 	} else if color == "always" {
 		atty = true
 	} else if color == "never" {
