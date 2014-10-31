@@ -3,6 +3,10 @@ build:
   steps:
     - setup-go-workspace
     - script:
+        name: git version
+        code: |
+          git version
+    - script:
         name: go get
         code: |
           go version
@@ -14,7 +18,7 @@ build:
     - script:
         name: goxc build & archive
         code: |
-          goxc -tasks='xc archive' -bc 'linux,!arm windows darwin' -d $WERCKER_OUTPUT_DIR/ -build-ldflags "-X main.Version \"$(git describe --tags --always --dirty) ($(git name-rev --name-only HEAD | sed 's/^remotes\/origin\///'))\"" -resources-include='README*'
+          goxc -tasks='xc archive' -bc 'linux,!arm windows darwin' -d $WERCKER_OUTPUT_DIR/ -build-ldflags "-X main.Version \"$(git describe --tags --always --dirty) ($(git name-rev --name-only HEAD | sed 's/^remotes\/origin\///'))\"" -resources-include='README*,zsh/_jvgrep'
     - script:
         name: output release tag
         code: |
@@ -25,7 +29,7 @@ deploy:
         name: restore release tag
         code: |
           export RELEASE_TAG=$(cat .release_tag)
-    - motemen/github-create-release:
+    - wercker/github-create-release:
         token: $GITHUB_TOKEN
         tag: $RELEASE_TAG
     - wercker/github-upload-asset:
