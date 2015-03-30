@@ -38,6 +38,7 @@ Usage
     -r               : print relative path
     -f file          : obtain pattern file
     -i               : ignore case(currently fixed only)
+    -e               : match with empty lines
     -l               : print only names of FILEs containing matches
     -n               : print line number with output lines
     -o               : show only the part of a line matching PATTERN

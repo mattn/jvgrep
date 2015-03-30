@@ -43,6 +43,7 @@ type GrepArg struct {
 const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.exe$`
 
 var (
+	empty      bool            // match empty line
 	encs       string          // encodings
 	exclude    string          // exclude pattern
 	fixed      bool            // fixed search
@@ -279,7 +280,7 @@ func Grep(arg *GrepArg) {
 				t = t[:l-1]
 				l--
 			}
-			if l == 0 {
+			if l == 0 && !empty {
 				continue
 			}
 			var match bool
@@ -489,6 +490,7 @@ Output control:
   -r               : print relative path
   -f file          : obtain pattern file
   -i               : ignore case(currently fixed only)
+  -e               : match with empty lines
   -l               : print only names of FILEs containing matches
   -n               : print line number with output lines
   -o               : show only the part of a line matching PATTERN
@@ -540,6 +542,8 @@ func main() {
 				verbose = true
 			case 'c':
 				count = true
+			case 'e':
+				empty = true
 			case 'r':
 				fullpath = false
 			case 'i':
