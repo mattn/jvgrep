@@ -279,9 +279,7 @@ func Grep(arg *GrepArg) {
 				t = t[:l-1]
 				l--
 			}
-			if l == 0 {
-				continue
-			}
+
 			var match bool
 			if only {
 				var matches []string
