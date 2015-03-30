@@ -303,7 +303,8 @@ func Grep(arg *GrepArg) {
 					}
 				}
 				match = len(matches) > 0
-				if (!invert && !match) || (invert && match) {
+				// skip if not match without invert, or match with invert.
+				if match == invert {
 					continue
 				}
 				if verbose {
@@ -363,7 +364,8 @@ func Grep(arg *GrepArg) {
 						}
 					}
 				}
-				if (!invert && !match) || (invert && match) {
+				// skip if not match without invert, or match with invert.
+				if match == invert {
 					continue
 				}
 				if verbose {
