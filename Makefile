@@ -3,7 +3,6 @@ VERSION=$(shell ./jvgrep --help 2>&1 | grep ^Version | sed 's/Version //')
 all : jvgrep
 
 jvgrep: jvgrep.go
-	go get -u -x code.google.com/p/mahonia
 	go get -u -x github.com/daviddengcn/go-colortext
 	go get -u -x github.com/mattn/jvgrep/mmap
 	go build -x .
