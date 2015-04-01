@@ -27,9 +27,9 @@ const version = "4.0"
 
 var encodings = []string{
 	"iso-2022-jp",
-	"utf-8",
 	"euc-jp",
 	"sjis",
+	"utf-8",
 	"utf-16le",
 	"utf-16be",
 }
@@ -173,9 +173,6 @@ func printstr(s string) {
 		syscall.Write(syscall.Stdout, []byte(s))
 	} else if oc != nil {
 		oc.Write([]byte(s))
-		//oc.I//
-		//s = oc.ConvertString(s)
-		//syscall.Write(syscall.Stdout, []byte(s))
 	} else {
 		os.Stdout.WriteString(s)
 	}
