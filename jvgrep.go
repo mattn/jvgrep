@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -15,22 +16,22 @@ import (
 	"syscall"
 	"unicode/utf8"
 
-	"code.google.com/p/mahonia"
 	"github.com/daviddengcn/go-colortext"
 	"github.com/mattn/go-isatty"
 	"github.com/mattn/jvgrep/mmap"
+	"golang.org/x/net/html/charset"
+	"golang.org/x/text/transform"
 )
 
 const version = "4.0"
 
 var encodings = []string{
-	"ascii",
 	"iso-2022-jp",
 	"utf-8",
 	"euc-jp",
 	"sjis",
-	"utf-16",
-	"",
+	"utf-16le",
+	"utf-16be",
 }
 
 type GrepArg struct {
@@ -43,31 +44,31 @@ type GrepArg struct {
 const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.exe$`
 
 var (
-	encs       string          // encodings
-	exclude    string          // exclude pattern
-	fixed      bool            // fixed search
-	ignorecase bool            // ignorecase
-	infile     string          // input filename
-	invert     bool            // invert search
-	only       bool            // show only matched
-	list       bool            // show the list matches
-	number     bool            // show line number
-	recursive  bool            // recursible search
-	verbose    bool            // verbose output
-	utf8out    bool            // output utf-8 strings
-	perl       bool            // perl regexp syntax
-	basic      bool            // basic regexp syntax
-	oc         mahonia.Encoder // mahonia encoder
-	color      string          // color operation
-	cwd, _     = os.Getwd()    // current directory
-	zeroFile   bool            // write \0 after the filename
-	zeroData   bool            // write \0 after the match
-	countMatch = 0             // count of matches
-	count      bool            // count of matches
-	fullpath   = true          // show full path
-	after      = 0             // show after lines
-	before     = 0             // show before lines
-	separator  = ":"           // column separator
+	encs       string       // encodings
+	exclude    string       // exclude pattern
+	fixed      bool         // fixed search
+	ignorecase bool         // ignorecase
+	infile     string       // input filename
+	invert     bool         // invert search
+	only       bool         // show only matched
+	list       bool         // show the list matches
+	number     bool         // show line number
+	recursive  bool         // recursible search
+	verbose    bool         // verbose output
+	utf8out    bool         // output utf-8 strings
+	perl       bool         // perl regexp syntax
+	basic      bool         // basic regexp syntax
+	oc         io.Writer    // output encoder
+	color      string       // color operation
+	cwd, _     = os.Getwd() // current directory
+	zeroFile   bool         // write \0 after the filename
+	zeroData   bool         // write \0 after the match
+	countMatch = 0          // count of matches
+	count      bool         // count of matches
+	fullpath   = true       // show full path
+	after      = 0          // show after lines
+	before     = 0          // show before lines
+	separator  = ":"        // column separator
 )
 
 func matchedfile(f string) {
@@ -171,8 +172,10 @@ func printstr(s string) {
 	if utf8out {
 		syscall.Write(syscall.Stdout, []byte(s))
 	} else if oc != nil {
-		s = oc.ConvertString(s)
-		syscall.Write(syscall.Stdout, []byte(s))
+		oc.Write([]byte(s))
+		//oc.I//
+		//s = oc.ConvertString(s)
+		//syscall.Write(syscall.Stdout, []byte(s))
 	} else {
 		os.Stdout.WriteString(s)
 	}
@@ -219,34 +222,24 @@ func Grep(arg *GrepArg) {
 		var n, l, size, next, prev int
 
 		if enc != "" {
-			ic := mahonia.NewDecoder(enc)
-			if ic == nil {
-				continue
-			}
-			maybe_binary := false
-			if enc == "utf-16" && len(f) > 2 {
-				if f[0] == 0xfe && f[1] == 0xff {
-					ff := make([]byte, len(f))
-					for nn := 0; nn < len(f); nn += 2 {
-						ff[nn], ff[nn+1] = f[nn+1], f[nn]
-					}
-					f = ff
+			if bytes.IndexFunc(f, func(r rune) bool { return 0 < r && r < 0x9 }) == -1 {
+				ee, _ := charset.Lookup(enc)
+				if ee == nil {
+					continue
 				}
-			} else {
-				for _, b := range f {
-					if b < 0x9 {
-						maybe_binary = true
-						break
-					}
-				}
-			}
-			if !maybe_binary {
-				ff, ok := ic.ConvertStringOK(string(f))
-				if !ok {
+				var buf bytes.Buffer
+				ic := transform.NewWriter(&buf, ee.NewDecoder())
+				_, err := ic.Write(f)
+				if err != nil {
 					next = -1
 					continue
 				}
-				f = []byte(ff)
+				err = ic.Close()
+				if err != nil {
+					next = -1
+					continue
+				}
+				f = buf.Bytes()
 			}
 		}
 		size = len(f)
@@ -320,7 +313,7 @@ func Grep(arg *GrepArg) {
 					}
 					if strings.IndexFunc(
 						m, func(r rune) bool {
-							return r < 0x9
+							return 0 < r && r < 0x9
 						}) != -1 {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -390,7 +383,7 @@ func Grep(arg *GrepArg) {
 				} else {
 					if bytes.IndexFunc(
 						t, func(r rune) bool {
-							return r < 0x9
+							return 0 < r && r < 0x9
 						}) != -1 {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -629,7 +622,12 @@ func main() {
 	}
 	out_enc := os.Getenv("JVGREP_OUTPUT_ENCODING")
 	if out_enc != "" {
-		oc = mahonia.NewEncoder(out_enc)
+		ee, _ := charset.Lookup(out_enc)
+		if ee == nil {
+			errorline(fmt.Sprintf("unknown encoding: %s", out_enc))
+			os.Exit(1)
+		}
+		oc = transform.NewWriter(os.Stdout, ee.NewEncoder())
 	}
 
 	instr := ""
@@ -638,7 +636,7 @@ func main() {
 		b, err := ioutil.ReadFile(infile)
 		if err != nil {
 			errorline(err.Error())
-			os.Exit(-1)
+			os.Exit(1)
 		}
 		instr = strings.TrimSpace(string(b))
 	} else {
@@ -651,12 +649,12 @@ func main() {
 		re, err := syntax.Parse(instr, syntax.Perl)
 		if err != nil {
 			errorline(err.Error())
-			os.Exit(-1)
+			os.Exit(1)
 		}
 		rec, err := syntax.Compile(re)
 		if err != nil {
 			errorline(err.Error())
-			os.Exit(-1)
+			os.Exit(1)
 		}
 		instr = rec.String()
 		if ignorecase {
@@ -665,7 +663,7 @@ func main() {
 		pattern, err = regexp.Compile(instr)
 		if err != nil {
 			errorline(err.Error())
-			os.Exit(-1)
+			os.Exit(1)
 		}
 	} else {
 		if ignorecase {
@@ -674,7 +672,7 @@ func main() {
 		pattern, err = regexp.Compile(instr)
 		if err != nil {
 			errorline(err.Error())
-			os.Exit(-1)
+			os.Exit(1)
 		}
 	}
 
@@ -687,7 +685,7 @@ func main() {
 	ere, err := regexp.Compile(exclude)
 	if err != nil {
 		errorline(err.Error())
-		os.Exit(-1)
+		os.Exit(1)
 	}
 
 	atty := false
@@ -727,7 +725,7 @@ func main() {
 	done := make(chan int)
 	go GoGrep(ch, done)
 	nargs := len(args[argindex:])
-	for ai, arg := range args[argindex:] {
+	for _, arg := range args[argindex:] {
 		globmask = ""
 		root := ""
 		arg = strings.Trim(arg, `"`)
@@ -764,13 +762,13 @@ func main() {
 			fi, err := os.Stat(path)
 			if err != nil {
 				errorline(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
-				os.Exit(-1)
+				os.Exit(1)
 			}
 			if !recursive && !fi.IsDir() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, ai == nargs-1, atty}
+				ch <- &GrepArg{pattern, path, nargs == 1, atty}
 				continue
 			} else {
 				root = path
