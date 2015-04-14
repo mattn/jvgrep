@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -38,7 +39,8 @@ type GrepArg struct {
 	pattern interface{}
 	input   interface{}
 	single  bool
-	color   bool
+	atty    bool
+	bom     []byte
 }
 
 const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.exe$`
@@ -91,7 +93,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		lc = "-"
 		l = -l
 	}
-	if !a.color {
+	if !a.atty {
 		if f != "" {
 			if !fullpath {
 				if fe, err := filepath.Rel(cwd, f); err == nil {
@@ -182,59 +184,40 @@ func errorline(s string) {
 	os.Stderr.WriteString(s + "\n")
 }
 
-func Grep(arg *GrepArg) {
-	var f []byte
-	var path = ""
-	var ok bool
-	var stdin *os.File
-	var err error
+func doGrep(path string, f []byte, arg *GrepArg) {
+	encs := encodings
 
-	if path, ok = arg.input.(string); ok {
-		if fi, err := os.Stat(path); err == nil && fi.Size() == 0 {
-			return
+	if len(f) > 2 {
+		if f[0] == 0xfe && f[1] == 0xff {
+			arg.bom = f[0:2]
+			f = f[2:]
+		} else if f[0] == 0xff && f[1] == 0xfe {
+			arg.bom = f[0:2]
+			f = f[2:]
 		}
-		mf, err := mmap.Open(path)
-		if err != nil {
-			errorline(err.Error() + ": " + path)
-			return
+	}
+	if len(arg.bom) > 0 {
+		if arg.bom[0] == 0xfe && arg.bom[1] == 0xff {
+			encs = []string{"utf-16be"}
+		} else if arg.bom[0] == 0xff && arg.bom[1] == 0xfe {
+			encs = []string{"utf-16le"}
 		}
-		defer mf.Close()
-		f = mf.Data()
-	} else if stdin, ok = arg.input.(*os.File); ok {
-		f, err = ioutil.ReadAll(stdin)
-		if err != nil {
-			errorline(err.Error() + ": stdin")
-			return
-		}
-		path = "stdin"
 	}
 
-	for _, enc := range encodings {
+	for _, enc := range encs {
 		if verbose {
 			println("trying("+enc+"):", path)
+		}
+		if len(arg.bom) > 0 && enc != "utf-16be" && enc != "utf-16le" {
+			continue
 		}
 
 		did := false
 		var t []byte
 		var n, l, size, next, prev int
-		bom := false
-
-		if len(f) > 2 {
-			if f[0] == 0xfe && f[1] == 0xff {
-				if enc != "utf-16be" {
-					continue
-				}
-				bom = true
-			} else if f[0] == 0xff && f[1] == 0xfe {
-				if enc != "utf-16le" {
-					continue
-				}
-				bom = true
-			}
-		}
 
 		if enc != "" {
-			if bom || bytes.IndexFunc(f, func(r rune) bool { return 0 < r && r < 0x9 }) == -1 {
+			if len(arg.bom) > 0 || bytes.IndexFunc(f, func(r rune) bool { return 0 < r && r < 0x9 }) == -1 {
 				ee, _ := charset.Lookup(enc)
 				if ee == nil {
 					continue
@@ -246,12 +229,23 @@ func Grep(arg *GrepArg) {
 					next = -1
 					continue
 				}
+				lf := false
+				if len(arg.bom) > 0 && len(f)%2 != 0 {
+					ic.Write([]byte{0})
+					lf = true
+				}
 				err = ic.Close()
 				if err != nil {
+					if verbose {
+						println(err.Error())
+					}
 					next = -1
 					continue
 				}
 				f = buf.Bytes()
+				if lf {
+					f = f[:len(f)-1]
+				}
 			}
 		}
 		size = len(f)
@@ -453,6 +447,36 @@ func Grep(arg *GrepArg) {
 		runtime.GC()
 		if did || next == -1 {
 			break
+		}
+	}
+}
+
+func Grep(arg *GrepArg) {
+	var f []byte
+	var path = ""
+	var ok bool
+	var stdin *bufio.Reader
+
+	if path, ok = arg.input.(string); ok {
+		if fi, err := os.Stat(path); err == nil && fi.Size() == 0 {
+			return
+		}
+		mf, err := mmap.Open(path)
+		if err != nil {
+			errorline(err.Error() + ": " + path)
+			return
+		}
+		defer mf.Close()
+		f = mf.Data()
+		doGrep(path, f, arg)
+	} else if in, ok := arg.input.(io.Reader); ok {
+		stdin = bufio.NewReader(in)
+		for {
+			f, _, err := stdin.ReadLine()
+			doGrep("stdin", f, arg)
+			if err != nil {
+				break
+			}
 		}
 	}
 }
@@ -726,7 +750,12 @@ func main() {
 	}
 
 	if len(args) == 1 && argindex != 0 {
-		Grep(&GrepArg{pattern, os.Stdin, true, atty})
+		Grep(&GrepArg{
+			pattern: pattern,
+			input:   os.Stdin,
+			single:  true,
+			atty:    atty,
+		})
 		return
 	}
 
@@ -780,7 +809,12 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, nargs == 1, atty}
+				ch <- &GrepArg{
+					pattern: pattern,
+					input:   path,
+					single:  nargs == 1,
+					atty:    atty,
+				}
 				continue
 			} else {
 				root = path
@@ -875,7 +909,12 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{pattern, path, false, atty}
+				ch <- &GrepArg{
+					pattern: pattern,
+					input:   path,
+					single:  false,
+					atty:    atty,
+				}
 			}
 			return nil
 		})
