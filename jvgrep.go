@@ -217,9 +217,24 @@ func Grep(arg *GrepArg) {
 		did := false
 		var t []byte
 		var n, l, size, next, prev int
+		bom := false
+
+		if len(f) > 2 {
+			if f[0] == 0xfe && f[1] == 0xff {
+				if enc != "utf-16be" {
+					continue
+				}
+				bom = true
+			} else if f[0] == 0xff && f[1] == 0xfe {
+				if enc != "utf-16le" {
+					continue
+				}
+				bom = true
+			}
+		}
 
 		if enc != "" {
-			if bytes.IndexFunc(f, func(r rune) bool { return 0 < r && r < 0x9 }) == -1 {
+			if bom || bytes.IndexFunc(f, func(r rune) bool { return 0 < r && r < 0x9 }) == -1 {
 				ee, _ := charset.Lookup(enc)
 				if ee == nil {
 					continue
