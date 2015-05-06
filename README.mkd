@@ -21,6 +21,10 @@ And type following
 
     # go get github.com/mattn/jvgrep
 
+#### Mac OS X
+
+    # brew install jvgrep
+
 Usage
 -----
 
