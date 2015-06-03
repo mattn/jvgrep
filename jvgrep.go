@@ -24,7 +24,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const version = "4.0"
+const version = "4.1"
 
 var encodings = []string{
 	"iso-2022-jp",
