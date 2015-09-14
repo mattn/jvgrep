@@ -43,34 +43,35 @@ type GrepArg struct {
 	bom     []byte
 }
 
-const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.exe$`
+const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.a$|\.exe$`
 
 var (
-	encs       string       // encodings
-	exclude    string       // exclude pattern
-	fixed      bool         // fixed search
-	ignorecase bool         // ignorecase
-	infile     string       // input filename
-	invert     bool         // invert search
-	only       bool         // show only matched
-	list       bool         // show the list matches
-	number     bool         // show line number
-	recursive  bool         // recursible search
-	verbose    bool         // verbose output
-	utf8out    bool         // output utf-8 strings
-	perl       bool         // perl regexp syntax
-	basic      bool         // basic regexp syntax
-	oc         io.Writer    // output encoder
-	color      string       // color operation
-	cwd, _     = os.Getwd() // current directory
-	zeroFile   bool         // write \0 after the filename
-	zeroData   bool         // write \0 after the match
-	countMatch = 0          // count of matches
-	count      bool         // count of matches
-	fullpath   = true       // show full path
-	after      = 0          // show after lines
-	before     = 0          // show before lines
-	separator  = ":"        // column separator
+	encs         string       // encodings
+	exclude      string       // exclude pattern
+	fixed        bool         // fixed search
+	ignorecase   bool         // ignorecase
+	ignorebinary bool         // ignorebinary
+	infile       string       // input filename
+	invert       bool         // invert search
+	only         bool         // show only matched
+	list         bool         // show the list matches
+	number       bool         // show line number
+	recursive    bool         // recursible search
+	verbose      bool         // verbose output
+	utf8out      bool         // output utf-8 strings
+	perl         bool         // perl regexp syntax
+	basic        bool         // basic regexp syntax
+	oc           io.Writer    // output encoder
+	color        string       // color operation
+	cwd, _       = os.Getwd() // current directory
+	zeroFile     bool         // write \0 after the filename
+	zeroData     bool         // write \0 after the match
+	countMatch   = 0          // count of matches
+	count        bool         // count of matches
+	fullpath     = true       // show full path
+	after        = 0          // show after lines
+	before       = 0          // show before lines
+	separator    = ":"        // column separator
 )
 
 func matchedfile(f string) {
@@ -186,6 +187,12 @@ func errorline(s string) {
 
 func doGrep(path string, f []byte, arg *GrepArg) {
 	encs := encodings
+
+	if ignorebinary {
+		if bytes.IndexFunc(f, func(r rune) bool { return 0 < r && r < 0x9 }) != -1 {
+			return
+		}
+	}
 
 	if len(f) > 2 {
 		if f[0] == 0xfe && f[1] == 0xff {
@@ -573,6 +580,8 @@ func main() {
 				fullpath = false
 			case 'i':
 				ignorecase = true
+			case 'I':
+				ignorebinary = true
 			case 'l':
 				list = true
 			case 'n':
