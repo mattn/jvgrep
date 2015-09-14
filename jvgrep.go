@@ -524,7 +524,8 @@ Output control:
   -c               : count matches
   -r               : print relative path
   -f file          : obtain pattern file
-  -i               : ignore case(currently fixed only)
+  -i               : ignore case
+  -I               : ignore binary files
   -l               : print only names of FILEs containing matches
   -n               : print line number with output lines
   -o               : show only the part of a line matching PATTERN
