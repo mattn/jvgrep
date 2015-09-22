@@ -815,7 +815,7 @@ func main() {
 				errorline(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
 				os.Exit(1)
 			}
-			if !recursive && !fi.IsDir() {
+			if !fi.IsDir() {
 				if verbose {
 					println("search:", path)
 				}
