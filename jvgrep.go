@@ -28,10 +28,10 @@ import (
 const version = "4.2"
 
 const (
-	MAGENTA = "\x1b[35m"
-	CYAN    = "\x1b[36m"
-	GREEN   = "\x1b[32m"
-	RED     = "\x1b[31m"
+	MAGENTA = "\x1b[35;1m"
+	CYAN    = "\x1b[36;1m"
+	GREEN   = "\x1b[32;1m"
+	RED     = "\x1b[31;1m"
 	RESET   = "\x1b[39m"
 )
 
@@ -94,8 +94,7 @@ func matchedfile(f string) {
 		}
 	}
 	if zeroFile {
-		printstr(f)
-		os.Stdout.Write([]byte{0})
+		printstr(f + "\x00")
 	} else {
 		printline(f)
 	}
@@ -115,9 +114,9 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				}
 			}
 			if zeroFile {
-				printstr(fmt.Sprintf("%s%s%d\x00", f, separator, l))
+				printstr(f + separator + fmt.Sprint(l) + "\x00")
 			} else {
-				printstr(fmt.Sprintf("%s%s%d%s", f, separator, l, lc))
+				printstr(f + separator + fmt.Sprint(l) + lc)
 			}
 		}
 		printline(m)
@@ -130,9 +129,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 			}
 		}
 		if zeroFile {
-			printstr(MAGENTA + f + RESET)
-			os.Stdout.Write([]byte{0})
-			printstr(GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
+			printstr(MAGENTA + f + RESET + "\x00" + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
 		} else {
 			printstr(MAGENTA + f + RESET + separator + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
 		}
@@ -166,9 +163,10 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 }
 
 func printline(s string) {
-	printstr(s + "\n")
 	if zeroData {
-		os.Stdout.Write([]byte{0})
+		printstr(s + "\x00")
+	} else {
+		printstr(s + "\n")
 	}
 }
 
