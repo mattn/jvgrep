@@ -629,6 +629,8 @@ func main() {
 				n++
 			case strings.HasPrefix(name, "color="):
 				color = name[6:]
+			case name == "nocolor":
+				color = "never"
 			case name == "color" && n < argc-1:
 				color = argv[n+1]
 				n++
