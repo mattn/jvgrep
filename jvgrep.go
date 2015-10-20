@@ -16,6 +16,7 @@ import (
 	"strings"
 	"syscall"
 	"unicode/utf8"
+	"unsafe"
 
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
@@ -173,11 +174,11 @@ func printline(s string) {
 
 func printstr(s string) {
 	if utf8out {
-		syscall.Write(syscall.Stdout, []byte(s))
+		syscall.Write(syscall.Stdout, *(*[]byte)(unsafe.Pointer(&s)))
 	} else if oc != nil {
-		oc.Write([]byte(s))
+		oc.Write(*(*[]byte)(unsafe.Pointer(&s)))
 	} else {
-		stdout.Write([]byte(s))
+		stdout.Write(*(*[]byte)(unsafe.Pointer(&s)))
 	}
 }
 
