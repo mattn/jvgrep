@@ -144,11 +144,10 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 		}
 		for i, il := range ill {
 			if i > 0 {
-				printstr(m[ill[i-1][1]:il[0]])
+				printstr(m[ill[i-1][1]:il[0]] + RED + m[il[0]:il[1]] + RESET)
 			} else {
-				printstr(m[0:il[0]])
+				printstr(m[0:il[0]] + RED + m[il[0]:il[1]] + RESET)
 			}
-			printstr(RED + m[il[0]:il[1]] + RESET)
 		}
 		printline(m[ill[len(ill)-1][1]:])
 	} else if s, ok := a.pattern.(string); ok {
@@ -159,8 +158,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				printline(m)
 				break
 			}
-			printstr(m[0:i])
-			printstr(RED + m[i:i+l] + RESET)
+			printstr(m[0:i] + RED + m[i:i+l] + RESET)
 			m = m[i+l:]
 		}
 	}
