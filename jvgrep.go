@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"unicode/utf8"
 
-	"github.com/daviddengcn/go-colortext"
+	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 	"github.com/mattn/jvgrep/mmap"
 	"golang.org/x/net/html/charset"
@@ -25,6 +25,14 @@ import (
 )
 
 const version = "4.2"
+
+const (
+	MAGENTA = "\x1b[35m"
+	CYAN    = "\x1b[36m"
+	GREEN   = "\x1b[32m"
+	RED     = "\x1b[31m"
+	RESET   = "\x1b[39m"
+)
 
 var encodings = []string{
 	"iso-2022-jp",
@@ -34,6 +42,10 @@ var encodings = []string{
 	"utf-16le",
 	"utf-16be",
 }
+
+var (
+	stdout = colorable.NewColorableStdout()
+)
 
 type GrepArg struct {
 	pattern interface{}
@@ -116,19 +128,13 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				f = fe
 			}
 		}
-		ct.ChangeColor(ct.Magenta, true, ct.None, false)
-		printstr(f)
-		ct.ChangeColor(ct.Cyan, true, ct.None, false)
 		if zeroFile {
+			printstr(MAGENTA + f + RESET)
 			os.Stdout.Write([]byte{0})
+			printstr(GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
 		} else {
-			fmt.Print(separator)
+			printstr(MAGENTA + f + RESET + separator + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
 		}
-		ct.ChangeColor(ct.Green, true, ct.None, false)
-		fmt.Print(l)
-		ct.ChangeColor(ct.Cyan, true, ct.None, false)
-		fmt.Print(separator)
-		ct.ResetColor()
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
 		ill := re.FindAllStringIndex(m, -1)
@@ -142,9 +148,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 			} else {
 				printstr(m[0:il[0]])
 			}
-			ct.ChangeColor(ct.Red, true, ct.None, false)
-			printstr(m[il[0]:il[1]])
-			ct.ResetColor()
+			printstr(RED + m[il[0]:il[1]] + RESET)
 		}
 		printline(m[ill[len(ill)-1][1]:])
 	} else if s, ok := a.pattern.(string); ok {
@@ -156,9 +160,7 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				break
 			}
 			printstr(m[0:i])
-			ct.ChangeColor(ct.Red, true, ct.None, false)
-			printstr(m[i : i+l])
-			ct.ResetColor()
+			printstr(RED + m[i:i+l] + RESET)
 			m = m[i+l:]
 		}
 	}
@@ -177,7 +179,7 @@ func printstr(s string) {
 	} else if oc != nil {
 		oc.Write([]byte(s))
 	} else {
-		os.Stdout.WriteString(s)
+		stdout.Write([]byte(s))
 	}
 }
 
@@ -673,7 +675,7 @@ func main() {
 			errorline(fmt.Sprintf("unknown encoding: %s", out_enc))
 			os.Exit(1)
 		}
-		oc = transform.NewWriter(os.Stdout, ee.NewEncoder())
+		oc = transform.NewWriter(stdout, ee.NewEncoder())
 	}
 
 	instr := ""
@@ -753,7 +755,7 @@ func main() {
 		signal.Notify(sc, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 		go func() {
 			for _ = range sc {
-				ct.ResetColor()
+				printstr(RESET)
 				os.Exit(0)
 			}
 		}()
