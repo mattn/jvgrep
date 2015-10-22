@@ -519,6 +519,7 @@ Output control:
   --enc encodings  : encodings: comma separated
   --exclude regexp : exclude files: specify as regexp
                      (default: %s)
+  --no-color       : do not print colors
   --color [=WHEN]  : always/never/auto
   -c               : count matches
   -r               : print relative path
@@ -629,7 +630,7 @@ func main() {
 				n++
 			case strings.HasPrefix(name, "color="):
 				color = name[6:]
-			case name == "nocolor":
+			case name == "no-color":
 				color = "never"
 			case name == "color" && n < argc-1:
 				color = argv[n+1]
