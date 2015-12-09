@@ -56,7 +56,7 @@ type GrepArg struct {
 	bom     []byte
 }
 
-const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.a$|\.exe$|/tags$`
+const excludeDefaults = `\.git$|\.svn$|\.hg$|\.o$|\.obj$|\.a$|\.exe~?$|/tags$`
 
 var (
 	encs         string       // encodings
@@ -87,17 +87,41 @@ var (
 	separator    = ":"        // column separator
 )
 
+func printline_zero(s string) {
+	printstr(s + "\x00")
+}
+
+func printline_norm(s string) {
+	printstr(s + "\n")
+}
+
+var printline func(string) = printline_norm
+
+func printstr(s string) {
+	printbytes(*(*[]byte)(unsafe.Pointer(&s)))
+}
+
+func printbytes_utf8(b []byte) {
+	syscall.Write(syscall.Stdout, b)
+}
+
+func printbytes_outc(b []byte) {
+	oc.Write(b)
+}
+
+func printbytes_norm(b []byte) {
+	stdout.Write(b)
+}
+
+var printbytes func([]byte) = printbytes_norm
+
 func matchedfile(f string) {
 	if !fullpath {
 		if fe, err := filepath.Rel(cwd, f); err == nil {
 			f = fe
 		}
 	}
-	if zeroFile {
-		printstr(f + "\x00")
-	} else {
-		printline(f)
-	}
+	printline(f)
 }
 
 func matchedline(f string, l int, m string, a *GrepArg) {
@@ -162,33 +186,31 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 	}
 }
 
-func printline(s string) {
-	if zeroData {
-		printstr(s + "\x00")
-	} else {
-		printstr(s + "\n")
-	}
-}
-
-func printstr(s string) {
-	if utf8out {
-		syscall.Write(syscall.Stdout, *(*[]byte)(unsafe.Pointer(&s)))
-	} else if oc != nil {
-		oc.Write(*(*[]byte)(unsafe.Pointer(&s)))
-	} else {
-		stdout.Write(*(*[]byte)(unsafe.Pointer(&s)))
-	}
-}
-
 func errorline(s string) {
 	os.Stderr.WriteString(s + "\n")
+}
+
+func maybeBinary(b []byte) bool {
+	l := len(b)
+	if l > 10000000 {
+		l = 1024
+	}
+	if l > 1024 {
+		l /= 2
+	}
+	for i := 0; i < l; i++ {
+		if 0 < b[i] && b[i] < 0x9 {
+			return true
+		}
+	}
+	return false
 }
 
 func doGrep(path string, f []byte, arg *GrepArg) {
 	encs := encodings
 
 	if ignorebinary {
-		if bytes.IndexFunc(f, func(r rune) bool { return 0 < r && r < 0x9 }) != -1 {
+		if maybeBinary(f) {
 			return
 		}
 	}
@@ -210,6 +232,9 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 		}
 	}
 
+	re, _ := arg.pattern.(*regexp.Regexp)
+	rs, _ := arg.pattern.(string)
+
 	for _, enc := range encs {
 		if verbose {
 			println("trying("+enc+"):", path)
@@ -223,7 +248,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 		var n, l, size, next, prev int
 
 		if enc != "" {
-			if len(arg.bom) > 0 || bytes.IndexFunc(f, func(r rune) bool { return 0 < r && r < 0x9 }) == -1 {
+			if len(arg.bom) > 0 || !maybeBinary(f) {
 				ee, _ := charset.Lookup(enc)
 				if ee == nil {
 					continue
@@ -249,6 +274,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 					continue
 				}
 				f = buf.Bytes()
+				buf.Reset()
 				if lf {
 					f = f[:len(f)-1]
 				}
@@ -287,20 +313,20 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 
 			var match bool
 			if only {
-				var matches []string
+				matches := make([]string, 100)
 				ts := string(t)
-				if re, ok := arg.pattern.(*regexp.Regexp); ok {
+				if re != nil {
 					matches = re.FindAllString(ts, -1)
-				} else if s, ok := arg.pattern.(string); ok {
+				} else {
 					if ignorecase {
 						ts = strings.ToLower(ts)
 					}
 					ti := 0
 					tl := len(ts)
 					for ti != -1 && ti < tl-1 {
-						ti = strings.Index(ts[ti:], s)
+						ti = strings.Index(ts[ti:], rs)
 						if ti != -1 {
-							matches = append(matches, s)
+							matches = append(matches, rs)
 							ti++
 						}
 					}
@@ -323,10 +349,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 					if count {
 						continue
 					}
-					if strings.IndexFunc(
-						m, func(r rune) bool {
-							return 0 < r && r < 0x9
-						}) != -1 {
+					if maybeBinary(*(*[]byte)(unsafe.Pointer(&m))) {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
@@ -351,18 +374,18 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 					}
 				}
 			} else {
-				if re, ok := arg.pattern.(*regexp.Regexp); ok {
+				if re != nil {
 					if len(re.FindAllIndex(t, 1)) > 0 {
 						match = true
 					}
-				} else if s, ok := arg.pattern.(string); ok {
+				} else {
 					if ignorecase {
 						if strings.Index(strings.ToLower(string(t)),
-							strings.ToLower(s)) > -1 {
+							strings.ToLower(rs)) > -1 {
 							match = true
 						}
 					} else {
-						if strings.Index(string(t), s) > -1 {
+						if strings.Index(string(t), rs) > -1 {
 							match = true
 						}
 					}
@@ -393,10 +416,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 						break
 					}
 				} else {
-					if bytes.IndexFunc(
-						t, func(r rune) bool {
-							return 0 < r && r < 0x9
-						}) != -1 {
+					if maybeBinary(t) {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
@@ -408,7 +428,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 								os.Stdout.WriteString("---\n")
 							}
 							bprev, bnext := next-l-2, next-l-2
-							lines := make([]string, 0)
+							lines := make([]string, 10)
 							for i := 0; i < before && bprev > 0; i++ {
 								for {
 									if bprev == 0 || f[bprev-1] == '\n' {
@@ -424,7 +444,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 								matchedline(path, i-n, lines[i-1], arg)
 							}
 							matchedline(path, n, string(t), arg)
-							lines = make([]string, 0)
+							lines = make([]string, 10)
 							aprev, anext := next, next
 							for i := 0; i < after && anext >= 0 && anext < size; i++ {
 								for {
@@ -569,6 +589,7 @@ func main() {
 				}
 			case '8':
 				utf8out = true
+				printbytes = printbytes_utf8
 			case 'F':
 				fixed = true
 			case 'R':
@@ -603,6 +624,7 @@ func main() {
 				}
 			case 'z':
 				zeroData = true
+				printline = printline_zero
 			case 'Z':
 				zeroFile = true
 			case 'V':
@@ -676,6 +698,9 @@ func main() {
 			os.Exit(1)
 		}
 		oc = transform.NewWriter(stdout, ee.NewEncoder())
+		if !utf8out {
+			printbytes = printbytes_outc
+		}
 	}
 
 	instr := ""
@@ -774,7 +799,7 @@ func main() {
 	envre := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 	globmask := ""
 
-	ch := make(chan *GrepArg, 10)
+	ch := make(chan *GrepArg, 100)
 	done := make(chan int)
 	go GoGrep(ch, done)
 	nargs := len(args[argindex:])
