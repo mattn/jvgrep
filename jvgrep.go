@@ -274,7 +274,6 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 					continue
 				}
 				f = buf.Bytes()
-				buf.Reset()
 				if lf {
 					f = f[:len(f)-1]
 				}
@@ -313,7 +312,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 
 			var match bool
 			if only {
-				matches := make([]string, 100)
+				var matches []string
 				ts := string(t)
 				if re != nil {
 					matches = re.FindAllString(ts, -1)
@@ -323,6 +322,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 					}
 					ti := 0
 					tl := len(ts)
+					matches = make([]string, 100)
 					for ti != -1 && ti < tl-1 {
 						ti = strings.Index(ts[ti:], rs)
 						if ti != -1 {
