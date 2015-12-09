@@ -322,7 +322,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 					}
 					ti := 0
 					tl := len(ts)
-					matches = make([]string, 100)
+					matches = make([]string, 10)
 					for ti != -1 && ti < tl-1 {
 						ti = strings.Index(ts[ti:], rs)
 						if ti != -1 {
@@ -799,7 +799,7 @@ func main() {
 	envre := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 	globmask := ""
 
-	ch := make(chan *GrepArg, 100)
+	ch := make(chan *GrepArg, 10)
 	done := make(chan int)
 	go GoGrep(ch, done)
 	nargs := len(args[argindex:])
