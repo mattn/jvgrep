@@ -776,12 +776,12 @@ func main() {
 	if fixed {
 		pattern = instr
 	} else if perl {
-		res, err := syntax.Parse(instr, syntax.Perl)
+		re, err := syntax.Parse(instr, syntax.Perl)
 		if err != nil {
 			errorline(err.Error())
 			os.Exit(1)
 		}
-		rec, err := syntax.Compile(res)
+		rec, err := syntax.Compile(re)
 		if err != nil {
 			errorline(err.Error())
 			os.Exit(1)
@@ -790,29 +790,19 @@ func main() {
 		if ignorecase {
 			instr = "(?i:" + instr + ")"
 		}
-		re, err := regexp.Compile(instr)
+		pattern, err = regexp.Compile(instr)
 		if err != nil {
 			errorline(err.Error())
 			os.Exit(1)
-		}
-		if re.String() != instr {
-			pattern = re
-		} else {
-			pattern = instr
 		}
 	} else {
 		if ignorecase {
 			instr = "(?i:" + instr + ")"
 		}
-		re, err := regexp.Compile(instr)
+		pattern, err = regexp.Compile(instr)
 		if err != nil {
 			errorline(err.Error())
 			os.Exit(1)
-		}
-		if re.String() != instr {
-			pattern = re
-		} else {
-			pattern = instr
 		}
 	}
 
