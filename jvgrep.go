@@ -878,7 +878,12 @@ func main() {
 		globmask = ""
 		root := ""
 		arg = strings.Trim(arg, `"`)
-		for n, i := range strings.Split(filepath.ToSlash(arg), "/") {
+		slashed := filepath.ToSlash(arg)
+		volume := filepath.VolumeName(slashed)
+		if volume != "" {
+			slashed = slashed[len(volume):]
+		}
+		for n, i := range strings.Split(slashed, "/") {
 			if root == "" && strings.Index(i, "*") != -1 {
 				if globmask == "" {
 					root = "."
@@ -905,6 +910,10 @@ func main() {
 					globmask = "/"
 				}
 			}
+		}
+		if volume != "" {
+			root = filepath.Join(volume, root)
+			globmask = filepath.Join(volume, globmask)
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
