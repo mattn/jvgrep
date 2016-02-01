@@ -33,7 +33,7 @@ const (
 	CYAN    = "\x1b[36;1m"
 	GREEN   = "\x1b[32;1m"
 	RED     = "\x1b[31;1m"
-	RESET   = "\x1b[39m"
+	RESET   = "\x1b[39;0m"
 )
 
 var encodings = []string{
