@@ -39,8 +39,8 @@ const (
 var encodings = []string{
 	"iso-2022-jp",
 	"euc-jp",
-	"sjis",
 	"utf-8",
+	"sjis",
 	"utf-16le",
 	"utf-16be",
 }
