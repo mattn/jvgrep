@@ -374,7 +374,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 					}
 					ti := 0
 					tl := len(ts)
-					matches = make([]string, 10)
+					matches = make([]string, 0, 10)
 					for ti != -1 && ti < tl-1 {
 						ti = strings.Index(ts[ti:], rs)
 						if ti != -1 {
@@ -480,7 +480,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 								os.Stdout.WriteString("---\n")
 							}
 							bprev, bnext := next-l-2, next-l-2
-							lines := make([]string, 10)
+							lines := make([]string, 0, 10)
 							for i := 0; i < before && bprev > 0; i++ {
 								for {
 									if bprev == 0 || f[bprev-1] == '\n' {
@@ -496,7 +496,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 								matchedline(path, i-n, lines[i-1], arg)
 							}
 							matchedline(path, n, string(t), arg)
-							lines = make([]string, 10)
+							lines = make([]string, 0, 10)
 							aprev, anext := next, next
 							for i := 0; i < after && anext >= 0 && anext < size; i++ {
 								for {
