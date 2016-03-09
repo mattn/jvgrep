@@ -57,7 +57,7 @@ type GrepArg struct {
 	bom     []byte
 }
 
-const excludeDefaults = `/\.git$|/\.svn$|/\.hg$|\.o$|\.obj$|\.a$|\.exe~?$|/tags$`
+const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|\.o$|\.obj$|\.a$|\.exe~?$|(^|\/)tags$`
 
 var (
 	encs         string       // encodings
