@@ -591,6 +591,7 @@ Output control:
   --enc encodings  : encodings: comma separated
   --exclude regexp : exclude files: specify as regexp
                      (default: %s)
+                     (specifying empty string won't exclude any files)
   --no-color       : do not print colors
   --color [=WHEN]  : always/never/auto
   -c               : count matches
