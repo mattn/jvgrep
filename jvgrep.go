@@ -1046,12 +1046,16 @@ func main() {
 
 // isLiteralRegexp checks regexp is a simple literal or not.
 func isLiteralRegexp(expr string, flags syntax.Flags) bool {
-	re, err := syntax.Parse(expr, flags)
-	if err != nil {
-		return false
-	}
-	if re.Op == syntax.OpLiteral && re.Flags&syntax.FoldCase == 0 {
-		return true
-	}
 	return false
+	/*
+		FIXME
+		re, err := syntax.Parse(expr, flags)
+		if err != nil {
+			return false
+		}
+		if re.Op&syntax.OpLiteral == 0 && re.Flags&syntax.FoldCase == 0 {
+			return true
+		}
+		return false
+	*/
 }
