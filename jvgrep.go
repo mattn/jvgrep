@@ -791,7 +791,7 @@ func main() {
 		if ignorecase {
 			instr = "(?i:" + instr + ")"
 		}
-		if isLiteralRegexp(instr, syntax.Perl) {
+		if isLiteralRegexp(instr) {
 			if verbose {
 				println("pattern treated as literal:", instr)
 			}
@@ -807,7 +807,7 @@ func main() {
 		if ignorecase {
 			instr = "(?i:" + instr + ")"
 		}
-		if isLiteralRegexp(instr, syntax.POSIX) {
+		if isLiteralRegexp(instr) {
 			if verbose {
 				println("pattern treated as literal:", instr)
 			}
@@ -1046,17 +1046,6 @@ func main() {
 }
 
 // isLiteralRegexp checks regexp is a simple literal or not.
-func isLiteralRegexp(expr string, flags syntax.Flags) bool {
-	return false
-	/*
-		FIXME
-		re, err := syntax.Parse(expr, flags)
-		if err != nil {
-			return false
-		}
-		if re.Op&syntax.OpLiteral == 0 && re.Flags&syntax.FoldCase == 0 {
-			return true
-		}
-		return false
-	*/
+func isLiteralRegexp(expr string) bool {
+	return regexp.QuoteMeta(expr) == expr
 }
