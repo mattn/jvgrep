@@ -401,7 +401,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 					if count {
 						continue
 					}
-					if maybeBinary(*(*[]byte)(unsafe.Pointer(&m))) {
+					if arg.atty && maybeBinary(*(*[]byte)(unsafe.Pointer(&m))) {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
@@ -468,7 +468,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 						break
 					}
 				} else {
-					if maybeBinary(t) {
+					if arg.atty && maybeBinary(t) {
 						errorline(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
