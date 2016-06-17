@@ -258,22 +258,22 @@ func maybeBinary(b []byte) bool {
 	return false
 }
 
-func doGrep(path string, f []byte, arg *GrepArg) {
+func doGrep(path string, fb []byte, arg *GrepArg) {
 	encs := encodings
 
 	if ignorebinary {
-		if maybeBinary(f) {
+		if maybeBinary(fb) {
 			return
 		}
 	}
 
-	if len(f) > 2 {
-		if f[0] == 0xfe && f[1] == 0xff {
-			arg.bom = f[0:2]
-			f = f[2:]
-		} else if f[0] == 0xff && f[1] == 0xfe {
-			arg.bom = f[0:2]
-			f = f[2:]
+	if len(fb) > 2 {
+		if fb[0] == 0xfe && fb[1] == 0xff {
+			arg.bom = fb[0:2]
+			fb = fb[2:]
+		} else if fb[0] == 0xff && fb[1] == 0xfe {
+			arg.bom = fb[0:2]
+			fb = fb[2:]
 		}
 	}
 	if len(arg.bom) > 0 {
@@ -287,6 +287,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 	re, _ := arg.pattern.(*regexp.Regexp)
 	rs, _ := arg.pattern.(string)
 
+	var f []byte
 	for _, enc := range encs {
 		if verbose {
 			println("trying("+enc+"):", path)
@@ -299,21 +300,22 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 		var t []byte
 		var n, l, size, next, prev int
 
+		f = fb
 		if enc != "" {
-			if len(arg.bom) > 0 || !maybeBinary(f) {
+			if len(arg.bom) > 0 || !maybeBinary(fb) {
 				ee, _ := charset.Lookup(enc)
 				if ee == nil {
 					continue
 				}
 				var buf bytes.Buffer
 				ic := transform.NewWriter(&buf, ee.NewDecoder())
-				_, err := ic.Write(f)
+				_, err := ic.Write(fb)
 				if err != nil {
 					next = -1
 					continue
 				}
 				lf := false
-				if len(arg.bom) > 0 && len(f)%2 != 0 {
+				if len(arg.bom) > 0 && len(fb)%2 != 0 {
 					ic.Write([]byte{0})
 					lf = true
 				}
@@ -523,7 +525,7 @@ func doGrep(path string, f []byte, arg *GrepArg) {
 			did = true
 		}
 		runtime.GC()
-		if did || next == -1 {
+		if did {
 			break
 		}
 	}
