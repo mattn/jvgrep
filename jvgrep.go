@@ -19,6 +19,7 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
+	"github.com/k-takata/go-iscygpty"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 	"github.com/mattn/jvgrep/mmap"
@@ -840,7 +841,7 @@ func main() {
 		color = os.Getenv("JVGREP_COLOR")
 	}
 	if color == "" || color == "auto" {
-		atty = isatty.IsTerminal(os.Stdout.Fd())
+		atty = isatty.IsTerminal(os.Stdout.Fd()) || iscygpty.IsCygwinPty(os.Stdout.Fd())
 	} else if color == "always" {
 		atty = true
 	} else if color == "never" {
