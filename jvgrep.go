@@ -27,7 +27,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const version = "4.9"
+const version = "5.0"
 
 const (
 	MAGENTA = "\x1b[35;1m"
