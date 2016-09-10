@@ -14,7 +14,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"unicode/utf8"
 	"unsafe"
@@ -22,6 +21,7 @@ import (
 	"github.com/k-takata/go-iscygpty"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
+	"github.com/mattn/jvgrep/fastwalk"
 	"github.com/mattn/jvgrep/mmap"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/transform"
@@ -88,58 +88,6 @@ var (
 	before       = 0          // show before lines
 	separator    = ":"        // column separator
 )
-
-var walk = filepath.Walk
-
-func walkAsync(base string, walkFn filepath.WalkFunc) error {
-	fi, err := os.Lstat(base)
-	if err != nil {
-		return err
-	}
-	if !fi.IsDir() {
-		return fmt.Errorf("%q is not a directory", base)
-	}
-
-	wg := new(sync.WaitGroup)
-
-	var fn func(p string)
-	fn = func(p string) {
-		defer wg.Done()
-
-		var f *os.File
-		f, err = os.Open(p)
-		if err != nil {
-			return
-		}
-
-		fis, err := f.Readdir(-1)
-		if err != nil {
-			f.Close()
-			return
-		}
-		f.Close()
-		for _, fi := range fis {
-			tp := filepath.Join(p, fi.Name())
-			err = walkFn(tp, fi, err)
-			if err != nil {
-				if err == filepath.SkipDir {
-					continue
-				}
-				return
-			}
-			if fi.IsDir() {
-				wg.Add(1)
-				go fn(tp)
-			}
-		}
-	}
-
-	wg.Add(1)
-	go fn(base)
-
-	wg.Wait()
-	return nil
-}
 
 func printline_zero(s string) {
 	printstr(s + "\x00")
@@ -727,8 +675,6 @@ func main() {
 				zeroData = true
 			case name == "help":
 				usage(false)
-			case name == "findasync":
-				walk = walkAsync
 			default:
 				usage(true)
 			}
@@ -1006,28 +952,24 @@ func main() {
 			println("root:", root)
 		}
 
-		walk(root, func(path string, info os.FileInfo, err error) error {
-			if info == nil {
-				return err
-			}
-
+		fastwalk.FastWalk(root, func(path string, mode os.FileMode) error {
 			path = filepath.ToSlash(path)
 
 			if ere != nil && ere.MatchString(path) {
-				if info.IsDir() {
+				if mode.IsDir() {
 					return filepath.SkipDir
 				}
 				return nil
 			}
 
-			if info.IsDir() {
+			if mode.IsDir() {
 				if path == "." || recursive || len(path) <= len(root) || dre.MatchString(path+"/") {
 					return nil
 				}
 				return filepath.SkipDir
 			}
 
-			if fre.MatchString(path) && info.Mode().IsRegular() {
+			if fre.MatchString(path) && mode.IsRegular() {
 				if verbose {
 					println("search:", path)
 				}
