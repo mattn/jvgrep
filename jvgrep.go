@@ -577,7 +577,7 @@ func usage(simple bool) {
 	if simple {
 		fmt.Println("Try `jvgrep --help' for more information.")
 	} else {
-		fmt.Println(`Version %s
+		fmt.Printf(`Version %s
 Regexp selection and interpretation:
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
