@@ -525,7 +525,6 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 			}
 			did = true
 		}
-		runtime.GC()
 		if did {
 			break
 		}
