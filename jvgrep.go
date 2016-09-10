@@ -573,11 +573,11 @@ func GoGrep(ch chan *GrepArg, done chan int) {
 }
 
 func usage(simple bool) {
-	fmt.Fprintln(os.Stderr, "Usage: jvgrep [OPTION] [PATTERN] [FILE]...")
+	fmt.Println("Usage: jvgrep [OPTION] [PATTERN] [FILE]...")
 	if simple {
-		fmt.Fprintln(os.Stderr, "Try `jvgrep --help' for more information.")
+		fmt.Println("Try `jvgrep --help' for more information.")
 	} else {
-		fmt.Fprintf(os.Stderr, `Version %s
+		fmt.Println(`Version %s
 Regexp selection and interpretation:
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
@@ -615,10 +615,10 @@ Context control:
   -B               : print NUM lines of leading context
   -A               : print NUM lines of trailing context
 `, version, excludeDefaults)
-		fmt.Fprintln(os.Stderr, "  Supported Encodings:")
+		fmt.Println("  Supported Encodings:")
 		for _, enc := range encodings {
 			if enc != "" {
-				fmt.Fprintln(os.Stderr, "    "+enc)
+				fmt.Println("    " + enc)
 			}
 		}
 	}
