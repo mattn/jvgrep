@@ -111,7 +111,7 @@ func walkAsync(base string, walkFn filepath.WalkFunc) error {
 		if err != nil {
 			return
 		}
-		defer f.Close()
+		f.Close()
 
 		fis, err := f.Readdir(-1)
 		if err != nil {
@@ -546,9 +546,9 @@ func Grep(arg *GrepArg) {
 			errorline(err.Error() + ": " + path)
 			return
 		}
-		defer mf.Close()
 		f = mf.Data()
 		doGrep(path, f, arg)
+		mf.Close()
 	} else if in, ok := arg.input.(io.Reader); ok {
 		stdin = bufio.NewReader(in)
 		for {
