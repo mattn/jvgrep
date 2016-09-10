@@ -111,12 +111,13 @@ func walkAsync(base string, walkFn filepath.WalkFunc) error {
 		if err != nil {
 			return
 		}
-		f.Close()
 
 		fis, err := f.Readdir(-1)
 		if err != nil {
+			f.Close()
 			return
 		}
+		f.Close()
 		for _, fi := range fis {
 			tp := filepath.Join(p, fi.Name())
 			err = walkFn(tp, fi, err)
