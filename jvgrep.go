@@ -761,6 +761,17 @@ func main() {
 				println("pattern treated as literal:", instr)
 			}
 			pattern = instr
+
+			mb := false
+			for _, r := range instr {
+				if r >= 256 {
+					mb = true
+					break
+				}
+			}
+			if !mb {
+				encodings = []string{"ascii"}
+			}
 		} else {
 			pattern, err = regexp.Compile(instr)
 			if err != nil {
