@@ -261,6 +261,9 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 				ic := transform.NewWriter(&buf, ee.NewDecoder())
 				_, err := ic.Write(fb)
 				if err != nil {
+					if verbose {
+						println(err.Error())
+					}
 					next = -1
 					continue
 				}
@@ -770,7 +773,7 @@ func main() {
 				}
 			}
 			if !mb {
-				encodings = []string{"ascii"}
+				encodings = []string{""}
 			}
 		} else {
 			pattern, err = regexp.Compile(instr)
