@@ -485,10 +485,8 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 }
 
 func Grep(arg *GrepArg) {
-	var stdin *bufio.Reader
-
 	if in, ok := arg.input.(io.Reader); ok {
-		stdin = bufio.NewReader(in)
+		stdin := bufio.NewReader(in)
 		for {
 			f, _, err := stdin.ReadLine()
 			doGrep("stdin", f, arg)
@@ -841,7 +839,7 @@ func main() {
 	envre := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 	globmask := ""
 
-	ch := make(chan *GrepArg, 10)
+	ch := make(chan *GrepArg, 20)
 	done := make(chan int)
 	go GoGrep(ch, done)
 	nargs := len(args[argindex:])
