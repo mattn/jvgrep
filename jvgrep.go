@@ -484,33 +484,9 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 }
 
 func Grep(arg *GrepArg) {
-	var path = ""
-	var ok bool
 	var stdin *bufio.Reader
 
-	if path, ok = arg.input.(string); ok {
-		fi, err := os.Stat(path)
-		if err == nil && fi.Size() == 0 {
-			return
-		}
-		if fi.Size() > 65536*4 {
-			mf, err := mmap.Open(path)
-			if err != nil {
-				errorline(err.Error() + ": " + path)
-				return
-			}
-			f := mf.Data()
-			doGrep(path, f, arg)
-			mf.Close()
-		} else {
-			f, err := ioutil.ReadFile(path)
-			if err != nil {
-				errorline(err.Error() + ": " + path)
-				return
-			}
-			doGrep(path, f, arg)
-		}
-	} else if in, ok := arg.input.(io.Reader); ok {
+	if in, ok := arg.input.(io.Reader); ok {
 		stdin = bufio.NewReader(in)
 		for {
 			f, _, err := stdin.ReadLine()
@@ -519,6 +495,39 @@ func Grep(arg *GrepArg) {
 				break
 			}
 		}
+		return
+	}
+
+	var err error
+	var fi os.FileInfo
+
+	if path, ok := arg.input.(string); ok {
+		fi, err = os.Stat(path)
+		if err != nil {
+			errorline(err.Error() + ": " + path)
+			return
+		}
+	}
+	if fi.Size() == 0 {
+		return
+	}
+	path := fi.Name()
+	if fi.Size() > 65536*4 {
+		mf, err := mmap.Open(path)
+		if err != nil {
+			errorline(err.Error() + ": " + path)
+			return
+		}
+		f := mf.Data()
+		doGrep(path, f, arg)
+		mf.Close()
+	} else {
+		f, err := ioutil.ReadFile(path)
+		if err != nil {
+			errorline(err.Error() + ": " + path)
+			return
+		}
+		doGrep(path, f, arg)
 	}
 }
 
@@ -901,7 +910,7 @@ func main() {
 				}
 				ch <- &GrepArg{
 					pattern: pattern,
-					input:   path,
+					input:   fi,
 					single:  nargs == 1,
 					atty:    atty,
 				}
