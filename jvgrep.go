@@ -484,23 +484,32 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 }
 
 func Grep(arg *GrepArg) {
-	var f []byte
 	var path = ""
 	var ok bool
 	var stdin *bufio.Reader
 
 	if path, ok = arg.input.(string); ok {
-		if fi, err := os.Stat(path); err == nil && fi.Size() == 0 {
+		fi, err := os.Stat(path)
+		if err == nil && fi.Size() == 0 {
 			return
 		}
-		mf, err := mmap.Open(path)
-		if err != nil {
-			errorline(err.Error() + ": " + path)
-			return
+		if fi.Size() > 65536*4 {
+			mf, err := mmap.Open(path)
+			if err != nil {
+				errorline(err.Error() + ": " + path)
+				return
+			}
+			f := mf.Data()
+			doGrep(path, f, arg)
+			mf.Close()
+		} else {
+			f, err := ioutil.ReadFile(path)
+			if err != nil {
+				errorline(err.Error() + ": " + path)
+				return
+			}
+			doGrep(path, f, arg)
 		}
-		f = mf.Data()
-		doGrep(path, f, arg)
-		mf.Close()
 	} else if in, ok := arg.input.(io.Reader); ok {
 		stdin = bufio.NewReader(in)
 		for {
