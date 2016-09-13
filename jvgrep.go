@@ -53,6 +53,7 @@ var (
 type GrepArg struct {
 	pattern interface{}
 	input   interface{}
+	size    int64
 	single  bool
 	atty    bool
 	bom     []byte
@@ -498,21 +499,8 @@ func Grep(arg *GrepArg) {
 		return
 	}
 
-	var err error
-	var fi os.FileInfo
-
-	if path, ok := arg.input.(string); ok {
-		fi, err = os.Stat(path)
-		if err != nil {
-			errorline(err.Error() + ": " + path)
-			return
-		}
-	}
-	if fi.Size() == 0 {
-		return
-	}
-	path := fi.Name()
-	if fi.Size() > 65536*4 {
+	path, _ := arg.input.(string)
+	if arg.size > 65536*4 {
 		mf, err := mmap.Open(path)
 		if err != nil {
 			errorline(err.Error() + ": " + path)
@@ -843,6 +831,7 @@ func main() {
 		Grep(&GrepArg{
 			pattern: pattern,
 			input:   os.Stdin,
+			size:    -1,
 			single:  true,
 			atty:    atty,
 		})
@@ -905,12 +894,16 @@ func main() {
 				os.Exit(1)
 			}
 			if !fi.IsDir() {
+				if fi.Size() == 0 {
+					continue
+				}
 				if verbose {
 					println("search:", path)
 				}
 				ch <- &GrepArg{
 					pattern: pattern,
-					input:   fi,
+					input:   path,
+					size:    fi.Size(),
 					single:  nargs == 1,
 					atty:    atty,
 				}
@@ -1005,11 +998,15 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{
-					pattern: pattern,
-					input:   path,
-					single:  false,
-					atty:    atty,
+				fi, err := os.Stat(path)
+				if err == nil {
+					ch <- &GrepArg{
+						pattern: pattern,
+						input:   path,
+						size:    fi.Size(),
+						single:  false,
+						atty:    atty,
+					}
 				}
 			}
 			return nil
