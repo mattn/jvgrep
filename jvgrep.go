@@ -888,7 +888,7 @@ func main() {
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
-			fi, err := os.Stat(path)
+			fi, err := os.Lstat(path)
 			if err != nil {
 				errorline(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
 				os.Exit(1)
@@ -998,7 +998,7 @@ func main() {
 				if verbose {
 					println("search:", path)
 				}
-				fi, err := os.Stat(path)
+				fi, err := os.Lstat(path)
 				if err == nil {
 					ch <- &GrepArg{
 						pattern: pattern,
