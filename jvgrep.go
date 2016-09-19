@@ -30,11 +30,11 @@ import (
 const version = "5.0"
 
 const (
-	MAGENTA = "\x1b[35;1m"
-	CYAN    = "\x1b[36;1m"
-	GREEN   = "\x1b[32;1m"
-	RED     = "\x1b[31;1m"
-	RESET   = "\x1b[39;0m"
+	cMAGENTA = "\x1b[35;1m" // Color mazenta
+	cCYAN    = "\x1b[36;1m" // Color cyan
+	cGREEN   = "\x1b[32;1m" // Color green
+	cRED     = "\x1b[31;1m" // Color red
+	cRESET   = "\x1b[39;0m" // Color reset
 )
 
 var encodings = []string{
@@ -50,6 +50,7 @@ var (
 	stdout = colorable.NewColorableStdout()
 )
 
+// GrepArg mean arguments to Grep.
 type GrepArg struct {
 	pattern interface{}
 	input   interface{}
@@ -98,7 +99,7 @@ func printLineNorm(s string) {
 	printStr(s + "\n")
 }
 
-var printLine func(string) = printLineNorm
+var printLine = printLineNorm
 
 func printStr(s string) {
 	printBytes(*(*[]byte)(unsafe.Pointer(&s)))
@@ -116,7 +117,7 @@ func printBytesNorm(b []byte) {
 	stdout.Write(b)
 }
 
-var printBytes func([]byte) = printBytesNorm
+var printBytes = printBytesNorm
 
 func matchedFile(f string) {
 	if !fullpath {
@@ -156,9 +157,9 @@ func matchedLine(f string, l int, m string, a *GrepArg) {
 			}
 		}
 		if zeroFile {
-			printStr(MAGENTA + f + RESET + "\x00" + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
+			printStr(cMAGENTA + f + cRESET + "\x00" + cGREEN + fmt.Sprint(l) + cCYAN + separator + cRESET)
 		} else {
-			printStr(MAGENTA + f + RESET + separator + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
+			printStr(cMAGENTA + f + cRESET + separator + cGREEN + fmt.Sprint(l) + cCYAN + separator + cRESET)
 		}
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
@@ -169,9 +170,9 @@ func matchedLine(f string, l int, m string, a *GrepArg) {
 		}
 		for i, il := range ill {
 			if i > 0 {
-				printStr(m[ill[i-1][1]:il[0]] + RED + m[il[0]:il[1]] + RESET)
+				printStr(m[ill[i-1][1]:il[0]] + cRED + m[il[0]:il[1]] + cRESET)
 			} else {
-				printStr(m[0:il[0]] + RED + m[il[0]:il[1]] + RESET)
+				printStr(m[0:il[0]] + cRED + m[il[0]:il[1]] + cRESET)
 			}
 		}
 		printLine(m[ill[len(ill)-1][1]:])
@@ -183,7 +184,7 @@ func matchedLine(f string, l int, m string, a *GrepArg) {
 				printLine(m)
 				break
 			}
-			printStr(m[0:i] + RED + m[i:i+l] + RESET)
+			printStr(m[0:i] + cRED + m[i:i+l] + cRESET)
 			m = m[i+l:]
 		}
 	}
@@ -484,6 +485,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 	}
 }
 
+// Grep do grep.
 func Grep(arg *GrepArg) {
 	if in, ok := arg.input.(io.Reader); ok {
 		stdin := bufio.NewReader(in)
@@ -699,16 +701,16 @@ func main() {
 	if encs != "" {
 		encodings = strings.Split(encs, ",")
 	} else {
-		enc_env := os.Getenv("JVGREP_ENCODINGS")
-		if enc_env != "" {
-			encodings = strings.Split(enc_env, ",")
+		encEnv := os.Getenv("JVGREP_ENCODINGS")
+		if encEnv != "" {
+			encodings = strings.Split(encEnv, ",")
 		}
 	}
-	out_enc := os.Getenv("JVGREP_OUTPUT_ENCODING")
-	if out_enc != "" {
-		ee, _ := charset.Lookup(out_enc)
+	outEnc := os.Getenv("JVGREP_OUTPUT_ENCODING")
+	if outEnc != "" {
+		ee, _ := charset.Lookup(outEnc)
 		if ee == nil {
-			errorLine(fmt.Sprintf("unknown encoding: %s", out_enc))
+			errorLine(fmt.Sprintf("unknown encoding: %s", outEnc))
 			os.Exit(1)
 		}
 		oc = transform.NewWriter(stdout, ee.NewEncoder())
@@ -819,7 +821,7 @@ func main() {
 		signal.Notify(sc, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 		go func() {
 			for _ = range sc {
-				printStr(RESET)
+				printStr(cRESET)
 				os.Exit(0)
 			}
 		}()
