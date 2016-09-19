@@ -90,44 +90,44 @@ var (
 	separator    = ":"        // column separator
 )
 
-func printline_zero(s string) {
-	printstr(s + "\x00")
+func printLineZero(s string) {
+	printStr(s + "\x00")
 }
 
-func printline_norm(s string) {
-	printstr(s + "\n")
+func printLineNorm(s string) {
+	printStr(s + "\n")
 }
 
-var printline func(string) = printline_norm
+var printLine func(string) = printLineNorm
 
-func printstr(s string) {
-	printbytes(*(*[]byte)(unsafe.Pointer(&s)))
+func printStr(s string) {
+	printBytes(*(*[]byte)(unsafe.Pointer(&s)))
 }
 
-func printbytes_utf8(b []byte) {
+func printBytesUtf8(b []byte) {
 	syscall.Write(syscall.Stdout, b)
 }
 
-func printbytes_outc(b []byte) {
+func printBytesOutc(b []byte) {
 	oc.Write(b)
 }
 
-func printbytes_norm(b []byte) {
+func printBytesNorm(b []byte) {
 	stdout.Write(b)
 }
 
-var printbytes func([]byte) = printbytes_norm
+var printBytes func([]byte) = printBytesNorm
 
-func matchedfile(f string) {
+func matchedFile(f string) {
 	if !fullpath {
 		if fe, err := filepath.Rel(cwd, f); err == nil {
 			f = fe
 		}
 	}
-	printline(f)
+	printLine(f)
 }
 
-func matchedline(f string, l int, m string, a *GrepArg) {
+func matchedLine(f string, l int, m string, a *GrepArg) {
 	lc := separator
 	if l < 0 {
 		lc = "-"
@@ -141,12 +141,12 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 				}
 			}
 			if zeroFile {
-				printstr(f + separator + fmt.Sprint(l) + "\x00")
+				printStr(f + separator + fmt.Sprint(l) + "\x00")
 			} else {
-				printstr(f + separator + fmt.Sprint(l) + lc)
+				printStr(f + separator + fmt.Sprint(l) + lc)
 			}
 		}
-		printline(m)
+		printLine(m)
 		return
 	}
 	if f != "" {
@@ -156,40 +156,40 @@ func matchedline(f string, l int, m string, a *GrepArg) {
 			}
 		}
 		if zeroFile {
-			printstr(MAGENTA + f + RESET + "\x00" + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
+			printStr(MAGENTA + f + RESET + "\x00" + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
 		} else {
-			printstr(MAGENTA + f + RESET + separator + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
+			printStr(MAGENTA + f + RESET + separator + GREEN + fmt.Sprint(l) + CYAN + separator + RESET)
 		}
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
 		ill := re.FindAllStringIndex(m, -1)
 		if len(ill) == 0 {
-			printline(m)
+			printLine(m)
 			return
 		}
 		for i, il := range ill {
 			if i > 0 {
-				printstr(m[ill[i-1][1]:il[0]] + RED + m[il[0]:il[1]] + RESET)
+				printStr(m[ill[i-1][1]:il[0]] + RED + m[il[0]:il[1]] + RESET)
 			} else {
-				printstr(m[0:il[0]] + RED + m[il[0]:il[1]] + RESET)
+				printStr(m[0:il[0]] + RED + m[il[0]:il[1]] + RESET)
 			}
 		}
-		printline(m[ill[len(ill)-1][1]:])
+		printLine(m[ill[len(ill)-1][1]:])
 	} else if s, ok := a.pattern.(string); ok {
 		l := len(s)
 		for {
 			i := strings.Index(m, s)
 			if i < 0 {
-				printline(m)
+				printLine(m)
 				break
 			}
-			printstr(m[0:i] + RED + m[i:i+l] + RESET)
+			printStr(m[0:i] + RED + m[i:i+l] + RESET)
 			m = m[i+l:]
 		}
 	}
 }
 
-func errorline(s string) {
+func errorLine(s string) {
 	os.Stderr.WriteString(s + "\n")
 }
 
@@ -348,7 +348,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					matchedfile(path)
+					matchedFile(path)
 					did = true
 					break
 				}
@@ -358,23 +358,23 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 						continue
 					}
 					if arg.atty && maybeBinary(*(*[]byte)(unsafe.Pointer(&m))) {
-						errorline(fmt.Sprintf("matched binary file: %s", path))
+						errorLine(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
 					} else {
 						if number {
 							if utf8.ValidString(m) {
-								matchedline(path, n, m, arg)
+								matchedLine(path, n, m, arg)
 							} else {
-								errorline(fmt.Sprintf("matched binary file: %s", path))
+								errorLine(fmt.Sprintf("matched binary file: %s", path))
 								did = true
 								break
 							}
 						} else {
 							if utf8.ValidString(m) {
-								matchedline("", 0, m, arg)
+								matchedLine("", 0, m, arg)
 							} else {
-								errorline(fmt.Sprintf("matched binary file: %s", path))
+								errorLine(fmt.Sprintf("matched binary file: %s", path))
 								did = true
 								break
 							}
@@ -406,7 +406,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					matchedfile(path)
+					matchedFile(path)
 					did = true
 					break
 				}
@@ -417,20 +417,20 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 				}
 				if arg.single && !number {
 					if utf8.Valid(t) {
-						matchedline("", -1, string(t), arg)
+						matchedLine("", -1, string(t), arg)
 					} else {
-						errorline(fmt.Sprintf("matched binary file: %s", path))
+						errorLine(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
 					}
 				} else {
 					if arg.atty && maybeBinary(t) {
-						errorline(fmt.Sprintf("matched binary file: %s", path))
+						errorLine(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
 					} else if utf8.Valid(t) {
 						if after <= 0 && before <= 0 {
-							matchedline(path, n, string(t), arg)
+							matchedLine(path, n, string(t), arg)
 						} else {
 							if countMatch > 1 {
 								os.Stdout.WriteString("---\n")
@@ -449,9 +449,9 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 								}
 							}
 							for i := len(lines); i > 0; i-- {
-								matchedline(path, i-n, lines[i-1], arg)
+								matchedLine(path, i-n, lines[i-1], arg)
 							}
-							matchedline(path, n, string(t), arg)
+							matchedLine(path, n, string(t), arg)
 							lines = make([]string, 0, 10)
 							aprev, anext := next, next
 							for i := 0; i < after && anext >= 0 && anext < size; i++ {
@@ -466,11 +466,11 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 								}
 							}
 							for i := 0; i < len(lines); i++ {
-								matchedline(path, -n-i-1, lines[i], arg)
+								matchedLine(path, -n-i-1, lines[i], arg)
 							}
 						}
 					} else {
-						errorline(fmt.Sprintf("matched binary file: %s", path))
+						errorLine(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
 					}
@@ -501,7 +501,7 @@ func Grep(arg *GrepArg) {
 	if arg.size > 65536*4 {
 		mf, err := mmap.Open(path)
 		if err != nil {
-			errorline(err.Error() + ": " + path)
+			errorLine(err.Error() + ": " + path)
 			return
 		}
 		f := mf.Data()
@@ -510,14 +510,14 @@ func Grep(arg *GrepArg) {
 	} else {
 		f, err := ioutil.ReadFile(path)
 		if err != nil {
-			errorline(err.Error() + ": " + path)
+			errorLine(err.Error() + ": " + path)
 			return
 		}
 		doGrep(path, f, arg)
 	}
 }
 
-func GoGrep(ch chan *GrepArg, done chan int) {
+func goGrep(ch chan *GrepArg, done chan int) {
 	for {
 		arg := <-ch
 		if arg == nil {
@@ -603,7 +603,7 @@ func main() {
 				}
 			case '8':
 				utf8out = true
-				printbytes = printbytes_utf8
+				printBytes = printBytesUtf8
 			case 'F':
 				fixed = true
 			case 'R':
@@ -638,7 +638,7 @@ func main() {
 				}
 			case 'z':
 				zeroData = true
-				printline = printline_zero
+				printLine = printLineZero
 			case 'Z':
 				zeroFile = true
 			case 'V':
@@ -708,12 +708,12 @@ func main() {
 	if out_enc != "" {
 		ee, _ := charset.Lookup(out_enc)
 		if ee == nil {
-			errorline(fmt.Sprintf("unknown encoding: %s", out_enc))
+			errorLine(fmt.Sprintf("unknown encoding: %s", out_enc))
 			os.Exit(1)
 		}
 		oc = transform.NewWriter(stdout, ee.NewEncoder())
 		if !utf8out {
-			printbytes = printbytes_outc
+			printBytes = printBytesOutc
 		}
 	}
 
@@ -722,7 +722,7 @@ func main() {
 	if len(infile) > 0 {
 		b, err := ioutil.ReadFile(infile)
 		if err != nil {
-			errorline(err.Error())
+			errorLine(err.Error())
 			os.Exit(1)
 		}
 		instr = strings.TrimSpace(string(b))
@@ -735,12 +735,12 @@ func main() {
 	} else if perl {
 		re, err := syntax.Parse(instr, syntax.Perl)
 		if err != nil {
-			errorline(err.Error())
+			errorLine(err.Error())
 			os.Exit(1)
 		}
 		rec, err := syntax.Compile(re)
 		if err != nil {
-			errorline(err.Error())
+			errorLine(err.Error())
 			os.Exit(1)
 		}
 		instr = rec.String()
@@ -755,7 +755,7 @@ func main() {
 		} else {
 			pattern, err = regexp.Compile(instr)
 			if err != nil {
-				errorline(err.Error())
+				errorLine(err.Error())
 				os.Exit(1)
 			}
 		}
@@ -782,7 +782,7 @@ func main() {
 		} else {
 			pattern, err = regexp.Compile(instr)
 			if err != nil {
-				errorline(err.Error())
+				errorLine(err.Error())
 				os.Exit(1)
 			}
 		}
@@ -796,7 +796,7 @@ func main() {
 	}
 	ere, err := regexp.Compile(exclude)
 	if err != nil {
-		errorline(err.Error())
+		errorLine(err.Error())
 		os.Exit(1)
 	}
 
@@ -819,7 +819,7 @@ func main() {
 		signal.Notify(sc, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 		go func() {
 			for _ = range sc {
-				printstr(RESET)
+				printStr(RESET)
 				os.Exit(0)
 			}
 		}()
@@ -841,7 +841,7 @@ func main() {
 
 	ch := make(chan *GrepArg, 20)
 	done := make(chan int)
-	go GoGrep(ch, done)
+	go goGrep(ch, done)
 	nargs := len(args[argindex:])
 	for _, arg := range args[argindex:] {
 		globmask = ""
@@ -888,7 +888,7 @@ func main() {
 			path, _ := filepath.Abs(arg)
 			fi, err := os.Lstat(path)
 			if err != nil {
-				errorline(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
+				errorLine(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
 				os.Exit(1)
 			}
 			if !fi.IsDir() {
