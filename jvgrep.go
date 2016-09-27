@@ -966,10 +966,15 @@ func main() {
 			dirmask = "(?i:" + dirmask + ")"
 			filemask = "(?i:" + filemask + ")"
 		}
-		dre := regexp.MustCompile("^" + dirmask)
-		fre := regexp.MustCompile("^" + filemask + "$")
 
 		root = filepath.Clean(root)
+		if root == "." {
+			dirmask = "./" + dirmask
+			filemask = "./" + filemask
+		}
+
+		dre := regexp.MustCompile("^" + dirmask)
+		fre := regexp.MustCompile("^" + filemask + "$")
 
 		if verbose {
 			println("dirmask:", dirmask)
