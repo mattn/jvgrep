@@ -479,7 +479,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 			}
 			did = true
 		}
-		if did {
+		if did || len(fb) == 0 {
 			break
 		}
 	}
