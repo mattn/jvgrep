@@ -592,13 +592,19 @@ func main() {
 		if len(argv[n]) > 1 && argv[n][0] == '-' && argv[n][1] != '-' {
 			switch argv[n][1] {
 			case 'A':
-				if n < argc-1 {
+				if len(argv[n]) > 2 {
+					after, _ = strconv.Atoi(argv[n][2:])
+					continue
+				} else if n < argc-1 {
 					after, _ = strconv.Atoi(argv[n+1])
 					n++
 					continue
 				}
 			case 'B':
-				if n < argc-1 {
+				if len(argv[n]) > 2 {
+					before, _ = strconv.Atoi(argv[n][2:])
+					continue
+				} else if n < argc-1 {
 					before, _ = strconv.Atoi(argv[n+1])
 					n++
 					continue
