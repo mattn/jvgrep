@@ -210,12 +210,12 @@ func maybeBinary(b []byte) bool {
 	return false
 }
 
-func doGrep(path string, fb []byte, arg *GrepArg) {
+func doGrep(path string, fb []byte, arg *GrepArg) bool {
 	encs := encodings
 
 	if ignorebinary {
 		if maybeBinary(fb) {
-			return
+			return false
 		}
 	}
 
@@ -239,6 +239,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 	re, _ := arg.pattern.(*regexp.Regexp)
 	rs, _ := arg.pattern.(string)
 
+	var okay bool
 	var f []byte
 	for _, enc := range encs {
 		if verbose {
@@ -479,24 +480,31 @@ func doGrep(path string, fb []byte, arg *GrepArg) {
 			}
 			did = true
 		}
+		if did {
+			okay = true
+		}
 		if did || len(fb) == 0 {
 			break
 		}
 	}
+	return okay
 }
 
 // Grep do grep.
-func Grep(arg *GrepArg) {
+func Grep(arg *GrepArg) bool {
+	n := false
 	if in, ok := arg.input.(io.Reader); ok {
 		stdin := bufio.NewReader(in)
 		for {
 			f, _, err := stdin.ReadLine()
-			doGrep("stdin", f, arg)
+			if doGrep("stdin", f, arg) {
+				n = true
+			}
 			if err != nil {
 				break
 			}
 		}
-		return
+		return n
 	}
 
 	path, _ := arg.input.(string)
@@ -504,30 +512,32 @@ func Grep(arg *GrepArg) {
 		mf, err := mmap.Open(path)
 		if err != nil {
 			errorLine(err.Error() + ": " + path)
-			return
+			return false
 		}
+		defer mf.Close()
 		f := mf.Data()
-		doGrep(path, f, arg)
-		mf.Close()
-	} else {
-		f, err := ioutil.ReadFile(path)
-		if err != nil {
-			errorLine(err.Error() + ": " + path)
-			return
-		}
-		doGrep(path, f, arg)
+		return doGrep(path, f, arg)
 	}
+	f, err := ioutil.ReadFile(path)
+	if err != nil {
+		errorLine(err.Error() + ": " + path)
+		return false
+	}
+	return doGrep(path, f, arg)
 }
 
-func goGrep(ch chan *GrepArg, done chan int) {
+func goGrep(ch chan *GrepArg, done chan bool) {
+	n := 0
 	for {
 		arg := <-ch
 		if arg == nil {
 			break
 		}
-		Grep(arg)
+		if Grep(arg) {
+			n++
+		}
 	}
-	done <- 1
+	done <- n > 0
 }
 
 func usage(simple bool) {
@@ -583,7 +593,7 @@ Context control:
 	os.Exit(2)
 }
 
-func main() {
+func doMain() int {
 	var args []string
 
 	argv := os.Args
@@ -834,21 +844,22 @@ func main() {
 	}
 
 	if len(args) == 1 && argindex != 0 {
-		Grep(&GrepArg{
+		if Grep(&GrepArg{
 			pattern: pattern,
 			input:   os.Stdin,
 			size:    -1,
 			single:  true,
 			atty:    atty,
-		})
-		return
+		}) {
+			return 1
+		}
 	}
 
 	envre := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 	globmask := ""
 
 	ch := make(chan *GrepArg, 20)
-	done := make(chan int)
+	done := make(chan bool)
 	go goGrep(ch, done)
 	nargs := len(args[argindex:])
 	for _, arg := range args[argindex:] {
@@ -1027,10 +1038,17 @@ func main() {
 	if count {
 		fmt.Println(countMatch)
 	}
-	<-done
+	if <-done == false {
+		return 1
+	}
+	return 0
 }
 
 // isLiteralRegexp checks regexp is a simple literal or not.
 func isLiteralRegexp(expr string) bool {
 	return regexp.QuoteMeta(expr) == expr
+}
+
+func main() {
+	os.Exit(doMain())
 }
