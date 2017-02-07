@@ -866,7 +866,8 @@ func doMain() int {
 		globmask = ""
 		root := ""
 		arg = strings.Trim(arg, `"`)
-		if _, err := os.Stat(arg); err == nil {
+		fi, err := os.Stat(arg)
+		if err == nil && fi.Mode().IsRegular() {
 			ch <- &GrepArg{
 				pattern: pattern,
 				input:   arg,
