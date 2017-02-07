@@ -27,7 +27,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const version = "5.0"
+const version = "5.1"
 
 const (
 	cMAGENTA = "\x1b[35;1m" // Color mazenta
