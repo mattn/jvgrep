@@ -875,6 +875,9 @@ func doMain() int {
 				atty:    atty,
 			}
 			continue
+		} else if err != nil && fi.Mode().IsDir() && !strings.Contains(arg, "*") {
+			errorLine(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
+			os.Exit(1)
 		}
 		slashed := filepath.ToSlash(arg)
 		volume := filepath.VolumeName(slashed)
