@@ -866,6 +866,15 @@ func doMain() int {
 		globmask = ""
 		root := ""
 		arg = strings.Trim(arg, `"`)
+		if _, err := os.Stat(arg); err == nil {
+			ch <- &GrepArg{
+				pattern: pattern,
+				input:   arg,
+				single:  false,
+				atty:    atty,
+			}
+			continue
+		}
 		slashed := filepath.ToSlash(arg)
 		volume := filepath.VolumeName(slashed)
 		if volume != "" {
