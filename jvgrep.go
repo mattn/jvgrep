@@ -875,7 +875,7 @@ func doMain() int {
 				atty:    atty,
 			}
 			continue
-		} else if err != nil && fi.Mode().IsDir() && !strings.Contains(arg, "*") {
+		} else if err == nil && fi.Mode().IsDir() && !strings.Contains(arg, "*") {
 			errorLine(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
 			os.Exit(1)
 		}
