@@ -876,10 +876,10 @@ func doMain() int {
 			}
 			continue
 		} else if err == nil && fi.Mode().IsDir() {
-			// existing directories: no need to expand path.
+			// existing directories: no need to prepare extra for glob.
 		} else {
-			// try to expand path.
-			root, globmask = expandPath(arg)
+			// otherwise: prepare glob with expand path.
+			root, globmask = prepareGlob(arg)
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
@@ -1024,8 +1024,9 @@ func doMain() int {
 
 var envre = regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 
-// expandPath expands `*`, `~` and environment variables in path.
-func expandPath(arg string) (root, globmask string) {
+// prepareGlob prepares glob parameters with expanding `*`, `~` and environment
+// variables in path.
+func prepareGlob(arg string) (root, globmask string) {
 	slashed := filepath.ToSlash(arg)
 	volume := filepath.VolumeName(slashed)
 	if volume != "" {
