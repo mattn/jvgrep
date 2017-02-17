@@ -592,7 +592,7 @@ Context control:
 	os.Exit(2)
 }
 
-func doMain() int {
+func parseOptions() []string {
 	var args []string
 
 	argv := os.Args
@@ -706,6 +706,11 @@ func doMain() int {
 			args = append(args, argv[n])
 		}
 	}
+	return args
+}
+
+func doMain() int {
+	args := parseOptions()
 
 	if len(args) == 0 {
 		usage(true)
@@ -1026,6 +1031,7 @@ var envre = regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9
 // prepareGlob prepares glob parameters with expanding `*`, `~` and environment
 // variables in path.
 func prepareGlob(arg string) (root, globmask string) {
+
 	slashed := filepath.ToSlash(arg)
 	volume := filepath.VolumeName(slashed)
 	if volume != "" {
