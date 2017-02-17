@@ -855,7 +855,6 @@ func doMain() int {
 		}
 	}
 
-	envre := regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
 	globmask := ""
 
 	ch := make(chan *GrepArg, 20)
@@ -868,6 +867,7 @@ func doMain() int {
 		arg = strings.Trim(arg, `"`)
 		fi, err := os.Stat(arg)
 		if err == nil && fi.Mode().IsRegular() {
+			// existing files: emit grep directly.
 			ch <- &GrepArg{
 				pattern: pattern,
 				input:   arg,
@@ -875,46 +875,11 @@ func doMain() int {
 				atty:    atty,
 			}
 			continue
-		} else if err == nil && fi.Mode().IsDir() && !strings.Contains(arg, "*") {
-			errorLine(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
-			os.Exit(1)
-		}
-		slashed := filepath.ToSlash(arg)
-		volume := filepath.VolumeName(slashed)
-		if volume != "" {
-			slashed = slashed[len(volume):]
-		}
-		for n, i := range strings.Split(slashed, "/") {
-			if root == "" && strings.Index(i, "*") != -1 {
-				if globmask == "" {
-					root = "."
-				} else {
-					root = filepath.ToSlash(globmask)
-				}
-			}
-			if n == 0 && i == "~" {
-				if runtime.GOOS == "windows" {
-					i = os.Getenv("USERPROFILE")
-				} else {
-					i = os.Getenv("HOME")
-				}
-			}
-			if envre.MatchString(i) {
-				i = strings.Trim(strings.Trim(os.Getenv(i[1:]), "()"), `"`)
-			}
-
-			globmask = filepath.Join(globmask, i)
-			if n == 0 {
-				if runtime.GOOS == "windows" && filepath.VolumeName(i) != "" {
-					globmask = i + "/"
-				} else if len(globmask) == 0 {
-					globmask = "/"
-				}
-			}
-		}
-		if volume != "" {
-			root = filepath.Join(volume, root)
-			globmask = filepath.Join(volume, globmask)
+		} else if err == nil && fi.Mode().IsDir() {
+			// existing directories: no need to prepare extra for glob.
+		} else {
+			// otherwise: prepare glob with expand path.
+			root, globmask = prepareGlob(arg)
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
@@ -1055,6 +1020,51 @@ func doMain() int {
 		return 1
 	}
 	return 0
+}
+
+var envre = regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9_]+\))$`)
+
+// prepareGlob prepares glob parameters with expanding `*`, `~` and environment
+// variables in path.
+func prepareGlob(arg string) (root, globmask string) {
+	slashed := filepath.ToSlash(arg)
+	volume := filepath.VolumeName(slashed)
+	if volume != "" {
+		slashed = slashed[len(volume):]
+	}
+	for n, i := range strings.Split(slashed, "/") {
+		if root == "" && strings.Index(i, "*") != -1 {
+			if globmask == "" {
+				root = "."
+			} else {
+				root = filepath.ToSlash(globmask)
+			}
+		}
+		if n == 0 && i == "~" {
+			if runtime.GOOS == "windows" {
+				i = os.Getenv("USERPROFILE")
+			} else {
+				i = os.Getenv("HOME")
+			}
+		}
+		if envre.MatchString(i) {
+			i = strings.Trim(strings.Trim(os.Getenv(i[1:]), "()"), `"`)
+		}
+
+		globmask = filepath.Join(globmask, i)
+		if n == 0 {
+			if runtime.GOOS == "windows" && filepath.VolumeName(i) != "" {
+				globmask = i + "/"
+			} else if len(globmask) == 0 {
+				globmask = "/"
+			}
+		}
+	}
+	if volume != "" {
+		root = filepath.Join(volume, root)
+		globmask = filepath.Join(volume, globmask)
+	}
+	return root, globmask
 }
 
 // isLiteralRegexp checks regexp is a simple literal or not.
