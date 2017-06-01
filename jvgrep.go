@@ -869,14 +869,18 @@ func doMain() int {
 	}
 
 	if len(args) == 1 && argindex != 0 {
-		if Grep(&GrepArg{
-			pattern: pattern,
-			input:   os.Stdin,
-			size:    -1,
-			single:  true,
-			atty:    atty,
-		}) {
-			return 1
+		if isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd()) {
+			args = append(args, ".")
+		} else {
+			if Grep(&GrepArg{
+				pattern: pattern,
+				input:   os.Stdin,
+				size:    -1,
+				single:  true,
+				atty:    atty,
+			}) {
+				return 1
+			}
 		}
 	}
 
