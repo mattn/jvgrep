@@ -540,11 +540,14 @@ func goGrep(ch chan *GrepArg, done chan bool) {
 }
 
 func usage(simple bool) {
-	fmt.Println("Usage: jvgrep [OPTION] [PATTERN] [FILE]...")
+	fmt.Println("Usage: jvgrep [OPTION] PATTERN [FILE]...")
 	if simple {
 		fmt.Println("Try `jvgrep --help' for more information.")
 	} else {
 		fmt.Printf(`Version %s
+Grep for Japanese vimmer. You can find text from files that written in
+another Japanese encodings.
+
 Regexp selection and interpretation:
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
@@ -581,8 +584,9 @@ Experimental feature:
 Context control:
   -B               : print NUM lines of leading context
   -A               : print NUM lines of trailing context
+
 `, version, excludeDefaults)
-		fmt.Println("  Supported Encodings:")
+		fmt.Println("Supported Encodings:")
 		for _, enc := range encodings {
 			if enc != "" {
 				fmt.Println("    " + enc)
