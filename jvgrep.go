@@ -81,6 +81,7 @@ var (
 	cwd, _       = os.Getwd() // current directory
 	zeroFile     bool         // write \0 after the filename
 	zeroData     bool         // write \0 after the match
+	allowTty     bool         // allow to search tty
 	countMatch   = 0          // count of matches
 	count        bool         // count of matches
 	column       bool         // show column
@@ -602,6 +603,7 @@ Output control:
   -l               : print only names of FILEs containing matches
   -n               : print line number with output lines
   -o               : show only the part of a line matching PATTERN
+  --tty            : allow to search stdin even it is connected to a tty
   -v               : select non-matching lines
   -Z, --null       : print 0 byte after FILE name
   --separator=CHAR : set column separator to CHAR (default: ":")
@@ -727,6 +729,8 @@ func parseOptions() []string {
 				zeroFile = true
 			case name == "null-data":
 				zeroData = true
+			case name == "tty":
+				allowTty = true
 			case name == "version":
 				showVersion()
 			case name == "help":
@@ -869,7 +873,7 @@ func doMain() int {
 	}
 
 	if len(args) == 1 && argindex != 0 {
-		if isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd()) {
+		if (isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd())) && !allowTty {
 			args = append(args, ".")
 		} else {
 			if Grep(&GrepArg{
