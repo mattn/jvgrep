@@ -1,7 +1,7 @@
 jvgrep
 ======
 
-`jvgrep` is grep for japanese vimmer. you can find text from files that writen in another japanese encodings.
+`jvgrep` is grep for Japanese vimmer. You can find text from files that written in another Japanese encodings.
 
 ![](http://go-gyazo.appspot.com/8a66f5af5f60da99.png)
 
@@ -67,7 +67,7 @@ for example,
     # jvgrep 表[現示] "**/*.txt"
 
 `pattern` should be specify with regexp. `file` can be specify wildcard.
-You can specify `pattern` with regular expression include multi-byte characters..
+You can specify `pattern` with regular expression include multi-byte characters.
 If you want to use own encodings for jvgrep, try to set environment variable $JVGREP_ENCODINGS to specify encodings separated with comma.
 If you problem about output of jvgrep (ex: output of :grep command in vim), try to set $JVGREP_OUTPUT_ENCODING to specify encoding of output.
 
