@@ -539,6 +539,11 @@ func goGrep(ch chan *GrepArg, done chan bool) {
 	done <- n > 0
 }
 
+func showVersion() {
+	fmt.Fprintf(os.Stdout, "%s\n", version)
+	os.Exit(0)
+}
+
 func usage(simple bool) {
 	fmt.Println("Usage: jvgrep [OPTION] PATTERN [FILE]...")
 	if simple {
@@ -555,7 +560,7 @@ Regexp selection and interpretation:
 
 Miscellaneous:
   -S               : verbose messages
-  -V               : print version information and exit
+  -V, --version    : print version information and exit
 
 Output control:
   -8               : show result as utf8 text
@@ -663,8 +668,7 @@ func parseOptions() []string {
 			case 'Z':
 				zeroFile = true
 			case 'V':
-				fmt.Fprintf(os.Stdout, "%s\n", version)
-				os.Exit(0)
+				showVersion()
 			default:
 				usage(true)
 			}
@@ -701,6 +705,8 @@ func parseOptions() []string {
 				zeroFile = true
 			case name == "null-data":
 				zeroData = true
+			case name == "version":
+				showVersion()
 			case name == "help":
 				usage(false)
 			default:
