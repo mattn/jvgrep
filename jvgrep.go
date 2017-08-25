@@ -101,7 +101,7 @@ func printLineNorm(s string) {
 var printLine = printLineNorm
 
 func printStr(s string) {
-	printBytes(*(*[]byte)(unsafe.Pointer(&s)))
+	printBytes([]byte(s))
 }
 
 func printBytesUtf8(b []byte) {
