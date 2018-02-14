@@ -90,6 +90,8 @@ var (
 	separator    = ":"        // column separator
 )
 
+var replbytes = []byte{0xef, 0xbf, 0xbd} // bytes representation of the replacement rune '\uFFFD'
+
 func printLineZero(s string) {
 	printStr(s + "\x00")
 }
@@ -286,7 +288,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 				if lf {
 					f = f[:len(f)-1]
 				}
-				if strings.Index(string(f), "\ufffd") > -1 {
+				if bytes.Index(f, replbytes) > -1 {
 					next = -1
 					continue
 				}
