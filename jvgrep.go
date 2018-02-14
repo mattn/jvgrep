@@ -225,6 +225,9 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 		} else if fb[0] == 0xff && fb[1] == 0xfe {
 			arg.bom = fb[0:2]
 			fb = fb[2:]
+		} else if len(fb) > 3 && fb[0] == 0xef && fb[1] == 0xbb && fb[2] == 0xbf {
+			arg.bom = fb[0:3]
+			fb = fb[3:]
 		}
 	}
 	if len(arg.bom) > 0 {
@@ -232,6 +235,8 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 			encs = []string{"utf-16be"}
 		} else if arg.bom[0] == 0xff && arg.bom[1] == 0xfe {
 			encs = []string{"utf-16le"}
+		} else if len(arg.bom) == 3 {
+			encs = []string{""}
 		}
 	}
 
@@ -244,7 +249,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 		if verbose {
 			println("trying("+enc+"):", path)
 		}
-		if len(arg.bom) > 0 && enc != "utf-16be" && enc != "utf-16le" {
+		if len(arg.bom) == 2 && enc != "utf-16be" && enc != "utf-16le" {
 			continue
 		}
 
@@ -270,7 +275,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					continue
 				}
 				lf := false
-				if len(arg.bom) > 0 && len(fb)%2 != 0 {
+				if len(arg.bom) == 2 && len(fb)%2 != 0 {
 					ic.Write([]byte{0})
 					lf = true
 				}
