@@ -286,6 +286,10 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 				if lf {
 					f = f[:len(f)-1]
 				}
+				if strings.Index(string(f), "\ufffd") > -1 {
+					next = -1
+					continue
+				}
 			}
 		}
 		size = len(f)
