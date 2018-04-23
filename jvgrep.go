@@ -16,7 +16,6 @@ import (
 	"strings"
 	"syscall"
 	"unicode/utf8"
-	"unsafe"
 
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
@@ -84,6 +83,7 @@ var (
 	zeroData     bool         // write \0 after the match
 	countMatch   = 0          // count of matches
 	count        bool         // count of matches
+	column       bool         // show column
 	fullpath     = true       // show full path
 	after        = 0          // show after lines
 	before       = 0          // show before lines
@@ -129,11 +129,15 @@ func matchedFile(f string) {
 	printLine(f)
 }
 
-func matchedLine(f string, l int, m string, a *GrepArg) {
+func matchedLine(f string, l, c int, m string, a *GrepArg) {
 	lc := separator
 	if l < 0 {
 		lc = "-"
 		l = -l
+	}
+	ls := fmt.Sprint(l)
+	if column && c != -1 {
+		ls += ":" + fmt.Sprint(c+1)
 	}
 	if !a.atty {
 		if f != "" {
@@ -143,9 +147,9 @@ func matchedLine(f string, l int, m string, a *GrepArg) {
 				}
 			}
 			if zeroFile {
-				printStr(f + separator + fmt.Sprint(l) + "\x00")
+				printStr(f + separator + ls + "\x00")
 			} else {
-				printStr(f + separator + fmt.Sprint(l) + lc)
+				printStr(f + separator + ls + lc)
 			}
 		}
 		printLine(m)
@@ -158,9 +162,9 @@ func matchedLine(f string, l int, m string, a *GrepArg) {
 			}
 		}
 		if zeroFile {
-			printStr(cMAGENTA + f + cRESET + "\x00" + cGREEN + fmt.Sprint(l) + cCYAN + separator + cRESET)
+			printStr(cMAGENTA + f + cRESET + "\x00" + cGREEN + ls + cCYAN + separator + cRESET)
 		} else {
-			printStr(cMAGENTA + f + cRESET + separator + cGREEN + fmt.Sprint(l) + cCYAN + separator + cRESET)
+			printStr(cMAGENTA + f + cRESET + separator + cGREEN + ls + cCYAN + separator + cRESET)
 		}
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
@@ -332,21 +336,21 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 
 			var match bool
 			if only {
-				var matches []string
+				var matches [][]int
 				ts := string(t)
 				if re != nil {
-					matches = re.FindAllString(ts, -1)
+					matches = re.FindAllStringIndex(ts, -1)
 				} else {
 					if ignorecase {
 						ts = strings.ToLower(ts)
 					}
 					ti := 0
 					tl := len(ts)
-					matches = make([]string, 0, 10)
+					matches = make([][]int, 0, 10)
 					for ti != -1 && ti < tl-1 {
 						ti = strings.Index(ts[ti:], rs)
 						if ti != -1 {
-							matches = append(matches, rs)
+							matches = append(matches, []int{ti, ti + tl})
 							ti++
 						}
 					}
@@ -364,27 +368,28 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					did = true
 					break
 				}
-				for _, m := range matches {
+				for _, mm := range matches {
 					countMatch++
 					if count {
 						continue
 					}
-					if arg.atty && maybeBinary(*(*[]byte)(unsafe.Pointer(&m))) {
+					m := []byte(ts)[mm[0]:mm[1]]
+					if arg.atty && maybeBinary(m) {
 						errorLine(fmt.Sprintf("matched binary file: %s", path))
 						did = true
 						break
 					} else {
 						if number {
-							if utf8.ValidString(m) {
-								matchedLine(path, n, m, arg)
+							if utf8.Valid(m) {
+								matchedLine(path, n, mm[0], string(m), arg)
 							} else {
 								errorLine(fmt.Sprintf("matched binary file: %s", path))
 								did = true
 								break
 							}
 						} else {
-							if utf8.ValidString(m) {
-								matchedLine("", 0, m, arg)
+							if utf8.Valid(m) {
+								matchedLine("", 0, mm[0], string(m), arg)
 							} else {
 								errorLine(fmt.Sprintf("matched binary file: %s", path))
 								did = true
@@ -394,22 +399,23 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					}
 				}
 			} else {
+				var matches [][]int
 				if re != nil {
-					if len(re.FindAllIndex(t, 1)) > 0 {
-						match = true
-					}
+					matches = re.FindAllIndex(t, 1)
 				} else {
 					if ignorecase {
-						if strings.Index(strings.ToLower(string(t)),
-							strings.ToLower(rs)) > -1 {
-							match = true
+						ti := strings.Index(strings.ToLower(string(t)), strings.ToLower(rs))
+						if ti != -1 {
+							matches = append(matches, []int{ti, ti + len(rs)})
 						}
 					} else {
+						ti := strings.Index(string(t), rs)
 						if strings.Index(string(t), rs) > -1 {
-							match = true
+							matches = append(matches, []int{ti, ti + len(rs)})
 						}
 					}
 				}
+				match = len(matches) > 0
 				// skip if not match without invert, or match with invert.
 				if match == invert {
 					continue
@@ -429,7 +435,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 				}
 				if arg.single && !number {
 					if utf8.Valid(t) {
-						matchedLine("", -1, string(t), arg)
+						matchedLine("", -1, matches[0][0], string(t), arg)
 					} else {
 						errorLine(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -442,7 +448,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 						break
 					} else if utf8.Valid(t) {
 						if after <= 0 && before <= 0 {
-							matchedLine(path, n, string(t), arg)
+							matchedLine(path, n, matches[0][0], string(t), arg)
 						} else {
 							if countMatch > 1 {
 								os.Stdout.WriteString("---\n")
@@ -461,9 +467,9 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 								}
 							}
 							for i := len(lines); i > 0; i-- {
-								matchedLine(path, i-n, lines[i-1], arg)
+								matchedLine(path, i-n, matches[0][0], lines[i-1], arg)
 							}
-							matchedLine(path, n, string(t), arg)
+							matchedLine(path, n, matches[0][0], string(t), arg)
 							lines = make([]string, 0, 10)
 							aprev, anext := next, next
 							for i := 0; i < after && anext >= 0 && anext < size; i++ {
@@ -478,7 +484,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 								}
 							}
 							for i := 0; i < len(lines); i++ {
-								matchedLine(path, -n-i-1, lines[i], arg)
+								matchedLine(path, -n-i-1, matches[0][0], lines[i], arg)
 							}
 						}
 					} else {
@@ -649,6 +655,8 @@ func parseOptions() []string {
 				verbose = true
 			case 'c':
 				count = true
+			case 'C':
+				column = true
 			case 'r':
 				fullpath = false
 			case 'i':
