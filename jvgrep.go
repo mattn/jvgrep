@@ -589,6 +589,7 @@ Output control:
   --no-color       : do not print colors
   --color [=WHEN]  : always/never/auto
   -c               : count matches
+  -C               : show column
   -r               : print relative path
   -f file          : obtain pattern file
   -i               : ignore case
