@@ -433,9 +433,13 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					did = true
 					continue
 				}
+				matchedIndex := -1
+				if match {
+					matchedIndex = matches[0][0]
+				}
 				if arg.single && !number {
 					if utf8.Valid(t) {
-						matchedLine("", -1, matches[0][0], string(t), arg)
+						matchedLine("", -1, matchedIndex, string(t), arg)
 					} else {
 						errorLine(fmt.Sprintf("matched binary file: %s", path))
 						did = true
@@ -448,7 +452,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 						break
 					} else if utf8.Valid(t) {
 						if after <= 0 && before <= 0 {
-							matchedLine(path, n, matches[0][0], string(t), arg)
+							matchedLine(path, n, matchedIndex, string(t), arg)
 						} else {
 							if countMatch > 1 {
 								os.Stdout.WriteString("---\n")
@@ -467,9 +471,9 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 								}
 							}
 							for i := len(lines); i > 0; i-- {
-								matchedLine(path, i-n, matches[0][0], lines[i-1], arg)
+								matchedLine(path, i-n, matchedIndex, lines[i-1], arg)
 							}
-							matchedLine(path, n, matches[0][0], string(t), arg)
+							matchedLine(path, n, matchedIndex, string(t), arg)
 							lines = make([]string, 0, 10)
 							aprev, anext := next, next
 							for i := 0; i < after && anext >= 0 && anext < size; i++ {
@@ -484,7 +488,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 								}
 							}
 							for i := 0; i < len(lines); i++ {
-								matchedLine(path, -n-i-1, matches[0][0], lines[i], arg)
+								matchedLine(path, -n-i-1, matchedIndex, lines[i], arg)
 							}
 						}
 					} else {
