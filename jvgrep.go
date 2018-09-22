@@ -609,8 +609,8 @@ Experimental feature:
   --findasync      : find asynchronously
 
 Context control:
-  -B               : print NUM lines of leading context
-  -A               : print NUM lines of trailing context
+  -B NUM           : print NUM lines of leading context
+  -A NUM           : print NUM lines of trailing context
 
 `, version, excludeDefaults)
 		fmt.Println("Supported Encodings:")
