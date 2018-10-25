@@ -605,9 +605,6 @@ Output control:
   -z               : a data line ends in 0 byte, not newline
   -Z               : print 0 byte after FILE name
 
-Experimental feature:
-  --findasync      : find asynchronously
-
 Context control:
   -B NUM           : print NUM lines of leading context
   -A NUM           : print NUM lines of trailing context
