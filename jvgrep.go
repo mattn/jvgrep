@@ -583,6 +583,7 @@ Regexp selection and interpretation:
   -i               : ignore case
   -z, --null-data  : a data line ends in 0 byte, not newline
   --enc=ENCODINGS  : encodings of input files: comma separated
+  --tty            : allow to search stdin even it is connected to a tty
 
 Miscellaneous:
   -S               : verbose messages
@@ -603,7 +604,6 @@ Output control:
   -l               : print only names of FILEs containing matches
   -n               : print line number with output lines
   -o               : show only the part of a line matching PATTERN
-  --tty            : allow to search stdin even it is connected to a tty
   -v               : select non-matching lines
   -Z, --null       : print 0 byte after FILE name
   --separator=CHAR : set column separator to CHAR (default: ":")
