@@ -578,32 +578,33 @@ Regexp selection and interpretation:
   -F               : PATTERN is a set of newline-separated fixed strings
   -G               : PATTERN is a basic regular expression (BRE)
   -P               : PATTERN is a Perl regular expression (ERE)
+  -f FILE          : obtain PATTERN from FILE
+  -i               : ignore case
+  -z, --null-data  : a data line ends in 0 byte, not newline
+  --enc=ENCODINGS  : encodings of input files: comma separated
 
 Miscellaneous:
   -S               : verbose messages
   -V, --version    : print version information and exit
 
 Output control:
-  -8               : show result as utf8 text
+  -8               : show result as utf-8 text
   -R               : search files recursively
-  --enc encodings  : encodings: comma separated
-  --exclude regexp : exclude files: specify as regexp
+  --exclude=REGEXP : exclude files: specify as REGEXP
                      (default: %s)
                      (specifying empty string won't exclude any files)
   --no-color       : do not print colors
-  --color [=WHEN]  : always/never/auto
+  --color[=WHEN]   : always/never/auto
   -c               : count matches
   -C               : show column
   -r               : print relative path
-  -f file          : obtain pattern file
-  -i               : ignore case
   -I               : ignore binary files
   -l               : print only names of FILEs containing matches
   -n               : print line number with output lines
   -o               : show only the part of a line matching PATTERN
   -v               : select non-matching lines
-  -z               : a data line ends in 0 byte, not newline
-  -Z               : print 0 byte after FILE name
+  -Z, --null       : print 0 byte after FILE name
+  --separator=CHAR : set column separator to CHAR (default: ":")
 
 Context control:
   -B NUM           : print NUM lines of leading context
