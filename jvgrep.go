@@ -25,7 +25,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const version = "5.6.0"
+const version = "5.7.0"
 
 const (
 	cMAGENTA = "\x1b[35;1m" // Color mazenta
@@ -58,7 +58,7 @@ type GrepArg struct {
 	bom     []byte
 }
 
-const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|\.o$|\.obj$|\.a$|\.exe~?$|(^|\/)tags$`
+const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|\.o$|\.obj$|\.a$|\.rlib$|\.exe~?$|(^|\/)tags$`
 
 var (
 	encs         string       // encodings
