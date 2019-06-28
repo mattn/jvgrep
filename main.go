@@ -28,7 +28,7 @@ import (
 const version = "5.7.0"
 
 const (
-	cMAGENTA = "\x1b[35;1m" // Color mazenta
+	cMAGENTA = "\x1b[35;1m" // Color magenta
 	cCYAN    = "\x1b[36;1m" // Color cyan
 	cGREEN   = "\x1b[32;1m" // Color green
 	cRED     = "\x1b[31;1m" // Color red
@@ -71,7 +71,7 @@ var (
 	only         bool         // show only matched
 	list         bool         // show the list matches
 	number       bool         // show line number
-	recursive    bool         // recursible search
+	recursive    bool         // recursive search
 	verbose      bool         // verbose output
 	utf8out      bool         // output utf-8 strings
 	perl         bool         // perl regexp syntax
