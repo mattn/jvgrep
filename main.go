@@ -56,6 +56,7 @@ type GrepArg struct {
 	single  bool
 	atty    bool
 	bom     []byte
+	ascii   bool
 }
 
 const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|\.o$|\.obj$|\.a$|\.rlib$|\.exe~?$|(^|\/)tags$`
@@ -252,7 +253,10 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 
 	var okay bool
 	var f []byte
-	for _, enc := range encs {
+	for e, enc := range encs {
+		if e > 0 && arg.ascii && !strings.HasPrefix(enc, "utf-16") {
+			continue
+		}
 		if verbose {
 			println("trying("+enc+"):", path)
 		}
@@ -762,6 +766,9 @@ func doMain() int {
 			encodings = strings.Split(encEnv, ",")
 		}
 	}
+	for i := 0; i < len(encodings); i++ {
+		encodings[i] = strings.ToLower(encodings[i])
+	}
 	outEnc := os.Getenv("JVGREP_OUTPUT_ENCODING")
 	if outEnc != "" {
 		ee, _ := charset.Lookup(outEnc)
@@ -788,8 +795,11 @@ func doMain() int {
 		instr = args[0]
 		argindex = 1
 	}
+
+	ascii := false
 	if fixed {
 		pattern = instr
+		ascii = isAscii(instr)
 	} else if perl {
 		re, err := syntax.Parse(instr, syntax.Perl)
 		if err != nil {
@@ -810,6 +820,7 @@ func doMain() int {
 				println("pattern treated as literal:", instr)
 			}
 			pattern = instr
+			ascii = isAscii(instr)
 		} else {
 			pattern, err = regexp.Compile(instr)
 			if err != nil {
@@ -826,6 +837,7 @@ func doMain() int {
 				println("pattern treated as literal:", instr)
 			}
 			pattern = instr
+			ascii = isAscii(instr)
 		} else {
 			pattern, err = regexp.Compile(instr)
 			if err != nil {
@@ -882,6 +894,7 @@ func doMain() int {
 				size:    -1,
 				single:  true,
 				atty:    atty,
+				ascii:   ascii,
 			}) {
 				return 1
 			}
@@ -906,6 +919,7 @@ func doMain() int {
 				input:   arg,
 				single:  false,
 				atty:    atty,
+				ascii:   ascii,
 			}
 			continue
 		} else if err == nil && fi.Mode().IsDir() {
@@ -934,6 +948,7 @@ func doMain() int {
 					size:    fi.Size(),
 					single:  nargs == 1,
 					atty:    atty,
+					ascii:   ascii,
 				}
 				continue
 			} else {
@@ -1039,6 +1054,7 @@ func doMain() int {
 						size:    fi.Size(),
 						single:  false,
 						atty:    atty,
+						ascii:   ascii,
 					}
 				}
 			}
@@ -1099,6 +1115,12 @@ func prepareGlob(arg string) (root, globmask string) {
 		globmask = filepath.Join(volume, globmask)
 	}
 	return root, globmask
+}
+
+func isAscii(s string) bool {
+	return strings.IndexFunc(s, func(r rune) bool {
+		return r > 127
+	}) == -1
 }
 
 // isLiteralRegexp checks regexp is a simple literal or not.
