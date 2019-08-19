@@ -205,8 +205,7 @@ func maybeBinary(b []byte) bool {
 	l := len(b)
 	if l > 10000000 {
 		l = 1024
-	}
-	if l > 1024 {
+	} else if l > 1024 {
 		l /= 2
 	}
 	for i := 0; i < l; i++ {
@@ -237,14 +236,14 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 			arg.bom = fb[0:3]
 			fb = fb[3:]
 		}
-	}
-	if len(arg.bom) > 0 {
-		if arg.bom[0] == 0xfe && arg.bom[1] == 0xff {
-			encs = []string{"utf-16be"}
-		} else if arg.bom[0] == 0xff && arg.bom[1] == 0xfe {
-			encs = []string{"utf-16le"}
-		} else if len(arg.bom) == 3 {
-			encs = []string{""}
+		if len(arg.bom) > 0 {
+			if arg.bom[0] == 0xfe && arg.bom[1] == 0xff {
+				encs = []string{"utf-16be"}
+			} else if arg.bom[0] == 0xff && arg.bom[1] == 0xfe {
+				encs = []string{"utf-16le"}
+			} else if len(arg.bom) == 3 {
+				encs = []string{""}
+			}
 		}
 	}
 
@@ -340,8 +339,8 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 			}
 
 			var match bool
+			var matches [][]int
 			if only {
-				var matches [][]int
 				ts := string(t)
 				if re != nil {
 					matches = re.FindAllStringIndex(ts, -1)
@@ -404,7 +403,6 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					}
 				}
 			} else {
-				var matches [][]int
 				if re != nil {
 					matches = re.FindAllIndex(t, 1)
 				} else {
@@ -539,9 +537,10 @@ func Grep(arg *GrepArg) bool {
 			errorLine(err.Error() + ": " + path)
 			return false
 		}
-		defer mf.Close()
 		f := mf.Data()
-		return doGrep(path, f, arg)
+		r := doGrep(path, f, arg)
+		mf.Close()
+		return r
 	}
 	f, err := ioutil.ReadFile(path)
 	if err != nil {
