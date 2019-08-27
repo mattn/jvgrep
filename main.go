@@ -44,9 +44,7 @@ var encodings = []string{
 	"utf-16be",
 }
 
-var (
-	stdout = colorable.NewColorableStdout()
-)
+var stdout = colorable.NewColorableStdout()
 
 // GrepArg mean arguments to Grep.
 type GrepArg struct {
@@ -1075,7 +1073,6 @@ var envre = regexp.MustCompile(`^(\$[a-zA-Z][a-zA-Z0-9_]+|\$\([a-zA-Z][a-zA-Z0-9
 // prepareGlob prepares glob parameters with expanding `*`, `~` and environment
 // variables in path.
 func prepareGlob(arg string) (root, globmask string) {
-
 	slashed := filepath.ToSlash(arg)
 	volume := filepath.VolumeName(slashed)
 	if volume != "" {

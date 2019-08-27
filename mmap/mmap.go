@@ -12,7 +12,6 @@ type memfile struct {
 	data []byte
 }
 
-
 func Open(filename string) (*memfile, error) {
 	f, err := os.Open(filename)
 	if err != nil {
