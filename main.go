@@ -57,7 +57,7 @@ type GrepArg struct {
 	ascii   bool
 }
 
-const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|\.o$|\.obj$|\.a$|\.rlib$|\.jpg$|\.gif$|\.png$|\.bmp$|\.zip$|\.exe~?$|(^|\/)tags$`
+const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|\.o$|\.obj$|\.a$|\.rlib$|\.[jJ][pP][gG]$|\.gif$|\.png$|\.bmp$|\.zip$|\.[eE][xX][eE]~?$|(^|\/)tags$`
 
 var (
 	encs         string       // encodings
