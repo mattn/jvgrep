@@ -19,8 +19,8 @@ import (
 
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
-	"github.com/mattn/jvgrep/fastwalk"
 	"github.com/mattn/jvgrep/mmap"
+	"github.com/saracen/walker"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/transform"
 )
@@ -1022,7 +1022,7 @@ func doMain() int {
 			println("root:", root)
 		}
 
-		fastwalk.FastWalk(root, func(path string, mode os.FileMode) error {
+		walker.Walk(root, func(path string, mode os.FileInfo) error {
 			path = filepath.ToSlash(path)
 
 			if ere != nil && ere.MatchString(path) {
@@ -1039,7 +1039,7 @@ func doMain() int {
 				return filepath.SkipDir
 			}
 
-			if fre.MatchString(path) && mode.IsRegular() {
+			if fre.MatchString(path) && mode.Mode().IsRegular() {
 				if verbose {
 					println("search:", path)
 				}
