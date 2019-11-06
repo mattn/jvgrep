@@ -25,7 +25,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const version = "5.8.1"
+const version = "5.8.2"
 
 const (
 	cMAGENTA = "\x1b[35;1m" // Color magenta
