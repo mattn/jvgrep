@@ -1,0 +1,2 @@
+testdir/input02.txt:1:非 ASCII 文字と
+testdir/input02.txt:2:ASCII が

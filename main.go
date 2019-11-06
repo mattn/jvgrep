@@ -25,7 +25,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const version = "5.8.1"
+const version = "5.8.2"
 
 const (
 	cMAGENTA = "\x1b[35;1m" // Color magenta
@@ -250,8 +250,9 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 
 	var okay bool
 	var f []byte
+	var istext bool
 	for e, enc := range encs {
-		if e > 0 && arg.ascii && !strings.HasPrefix(enc, "utf-16") {
+		if e > 0 && istext && arg.ascii && !strings.HasPrefix(enc, "utf-16") {
 			continue
 		}
 		if verbose {
@@ -304,6 +305,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					continue
 				}
 			}
+			istext = true
 		}
 		size = len(f)
 		if size == 0 {
