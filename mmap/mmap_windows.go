@@ -3,6 +3,7 @@ package mmap
 import (
 	"errors"
 	"os"
+	"reflect"
 	"syscall"
 	"unsafe"
 )
@@ -39,7 +40,17 @@ func Open(filename string) (mf *memfile, err error) {
 			err = errors.New("Failed option a file")
 		}
 	}()
-	return &memfile{ptr, fsize, (*[1 << 30]byte)(unsafe.Pointer(ptr))[:fsize]}, nil
+
+	header := &reflect.SliceHeader{
+		Data: ptr,
+		Len:  int(fsize),
+		Cap:  int(fsize),
+	}
+	return &memfile{
+		ptr:  ptr,
+		size: fsize,
+		data: *(*[]byte)(unsafe.Pointer(header)),
+	}, nil
 }
 
 func (mf *memfile) Size() int64 {
