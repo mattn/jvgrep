@@ -881,6 +881,8 @@ func doMain() int {
 				os.Exit(0)
 			}
 		}()
+
+		defer colorable.EnableColorsStdout(nil)()
 	}
 
 	if len(args) == 1 && argindex != 0 {
