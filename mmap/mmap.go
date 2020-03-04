@@ -7,12 +7,13 @@ import (
 	"syscall"
 )
 
-type memfile struct {
+type Memfile struct {
 	size int64
 	data []byte
 }
 
-func Open(filename string) (*memfile, error) {
+// Open filename with mmap
+func Open(filename string) (*Memfile, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -27,17 +28,20 @@ func Open(filename string) (*memfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &memfile{fsize, mem}, nil
+	return &Memfile{fsize, mem}, nil
 }
 
-func (mf *memfile) Size() int64 {
+// Size return a size of data
+func (mf *Memfile) Size() int64 {
 	return mf.size
 }
 
-func (mf memfile) Data() []byte {
+// Data return the bytes
+func (mf Memfile) Data() []byte {
 	return mf.data
 }
 
-func (mf memfile) Close() {
+// Close the memfile
+func (mf Memfile) Close() {
 	syscall.Munmap(mf.data)
 }

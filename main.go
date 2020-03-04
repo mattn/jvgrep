@@ -25,7 +25,11 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const version = "5.8.2"
+const (
+	name     = "jvgrep"
+	version  = "5.8.3"
+	revision = "HEAD"
+)
 
 const (
 	cMAGENTA = "\x1b[35;1m" // Color magenta
@@ -798,7 +802,7 @@ func doMain() int {
 	ascii := false
 	if fixed {
 		pattern = instr
-		ascii = isAscii(instr)
+		ascii = isASCII(instr)
 	} else if perl {
 		re, err := syntax.Parse(instr, syntax.Perl)
 		if err != nil {
@@ -819,7 +823,7 @@ func doMain() int {
 				println("pattern treated as literal:", instr)
 			}
 			pattern = instr
-			ascii = isAscii(instr)
+			ascii = isASCII(instr)
 		} else {
 			pattern, err = regexp.Compile(instr)
 			if err != nil {
@@ -836,7 +840,7 @@ func doMain() int {
 				println("pattern treated as literal:", instr)
 			}
 			pattern = instr
-			ascii = isAscii(instr)
+			ascii = isASCII(instr)
 		} else {
 			pattern, err = regexp.Compile(instr)
 			if err != nil {
@@ -876,7 +880,7 @@ func doMain() int {
 		sc := make(chan os.Signal, 10)
 		signal.Notify(sc, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 		go func() {
-			for _ = range sc {
+			for range sc {
 				printStr(cRESET)
 				os.Exit(0)
 			}
@@ -1117,7 +1121,7 @@ func prepareGlob(arg string) (root, globmask string) {
 	return root, globmask
 }
 
-func isAscii(s string) bool {
+func isASCII(s string) bool {
 	return strings.IndexFunc(s, func(r rune) bool {
 		return r > 127
 	}) == -1

@@ -7,13 +7,15 @@ import (
 	"unsafe"
 )
 
-type memfile struct {
+// Memfile is
+type Memfile struct {
 	ptr  uintptr
 	size int64
 	data []byte
 }
 
-func Open(filename string) (mf *memfile, err error) {
+// Open filename with mmap
+func Open(filename string) (mf *Memfile, err error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -39,17 +41,20 @@ func Open(filename string) (mf *memfile, err error) {
 			err = errors.New("Failed option a file")
 		}
 	}()
-	return &memfile{ptr, fsize, (*[1 << 30]byte)(unsafe.Pointer(ptr))[:fsize]}, nil
+	return &Memfile{ptr, fsize, (*[1 << 30]byte)(unsafe.Pointer(ptr))[:fsize]}, nil
 }
 
-func (mf *memfile) Size() int64 {
+// Size return a size of data
+func (mf *Memfile) Size() int64 {
 	return mf.size
 }
 
-func (mf *memfile) Data() []byte {
+// Data return the bytes
+func (mf *Memfile) Data() []byte {
 	return mf.data
 }
 
-func (mf *memfile) Close() {
+// Close the memfile
+func (mf *Memfile) Close() {
 	syscall.UnmapViewOfFile(mf.ptr)
 }
