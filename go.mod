@@ -1,4 +1,4 @@
-module github.com/mattn/jvgrep
+module github.com/mattn/jvgrep/v5
 
 go 1.13
 
