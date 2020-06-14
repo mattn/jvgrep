@@ -19,7 +19,7 @@ import (
 
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
-	"github.com/mattn/jvgrep/mmap"
+	"github.com/mattn/jvgrep/v5/mmap"
 	"github.com/saracen/walker"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/transform"
