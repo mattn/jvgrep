@@ -19,7 +19,13 @@ To compile jvgrep, you must install golang.
 
 And type following
 
-    # go get github.com/mattn/jvgrep
+Go 1.16 or later
+
+    # go install github.com/mattn/jvgrep/v5@latest
+
+Go 1.15 or before
+
+    # go get github.com/mattn/jvgrep/v5
 
 #### Mac OS X
 
