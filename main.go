@@ -935,6 +935,11 @@ func doMain() int {
 		}
 		if root == "" {
 			path, _ := filepath.Abs(arg)
+			path, err = filepath.EvalSymlinks(path)
+			if err != nil {
+				errorLine(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
+				os.Exit(1)
+			}
 			fi, err := os.Lstat(path)
 			if err != nil {
 				errorLine(fmt.Sprintf("jvgrep: %s: No such file or directory", arg))
@@ -1030,24 +1035,30 @@ func doMain() int {
 			println("root:", root)
 		}
 
-		walker.Walk(root, func(path string, mode os.FileInfo) error {
+		walker.Walk(root, func(path string, fi os.FileInfo) error {
 			path = filepath.ToSlash(path)
 
+			if fi.Mode()&os.ModeSymlink != 0 {
+				path, err = filepath.EvalSymlinks(path)
+				if err != nil {
+					return err
+				}
+			}
 			if ere != nil && ere.MatchString(path) {
-				if mode.IsDir() {
+				if fi.IsDir() {
 					return filepath.SkipDir
 				}
 				return nil
 			}
 
-			if mode.IsDir() {
+			if fi.IsDir() {
 				if path == "." || recursive || len(path) <= len(root) || dre.MatchString(path+"/") {
 					return nil
 				}
 				return filepath.SkipDir
 			}
 
-			if fre.MatchString(path) && mode.Mode().IsRegular() {
+			if fre.MatchString(path) && fi.Mode().IsRegular() {
 				if verbose {
 					println("search:", path)
 				}
