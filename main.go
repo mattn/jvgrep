@@ -354,13 +354,15 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					}
 					ti := 0
 					tl := len(ts)
+					rl := len(rs)
 					matches = make([][]int, 0, 10)
-					for ti != -1 && ti < tl-1 {
-						ti = strings.Index(ts[ti:], rs)
-						if ti != -1 {
-							matches = append(matches, []int{ti, ti + tl})
-							ti++
+					for ti < tl {
+						idx := strings.Index(ts[ti:], rs)
+						if idx == -1 {
+							break
 						}
+						matches = append(matches, []int{ti + idx, ti + idx + rl})
+						ti += idx + 1
 					}
 				}
 				match = len(matches) > 0
@@ -417,7 +419,7 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 						}
 					} else {
 						ti := strings.Index(string(t), rs)
-						if strings.Index(string(t), rs) > -1 {
+						if ti > -1 {
 							matches = append(matches, []int{ti, ti + len(rs)})
 						}
 					}
