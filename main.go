@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"unicode/utf8"
 
@@ -59,6 +60,20 @@ type GrepArg struct {
 	atty    bool
 	bom     []byte
 	ascii   bool
+	buf     bytes.Buffer
+}
+
+func (a *GrepArg) writeStr(s string) {
+	a.buf.WriteString(s)
+}
+
+func (a *GrepArg) writeLine(s string) {
+	a.buf.WriteString(s)
+	if zeroData {
+		a.buf.WriteByte(0)
+	} else {
+		a.buf.WriteByte('\n')
+	}
 }
 
 const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|\.o$|\.obj$|\.a$|\.rlib$|\.[jJ][pP][gG]$|\.gif$|\.png$|\.bmp$|\.gz$|\.zip$|\.[eE][xX][eE]~?$|(^|\/)tags$`
@@ -85,7 +100,7 @@ var (
 	zeroFile     bool         // write \0 after the filename
 	zeroData     bool         // write \0 after the match
 	allowTty     bool         // allow to search tty
-	countMatch   = 0          // count of matches
+	countMatch   int64        // count of matches
 	count        bool         // count of matches
 	column       bool         // show column
 	fullpath     = true       // show full path
@@ -124,13 +139,13 @@ func printBytesNorm(b []byte) {
 
 var printBytes = printBytesNorm
 
-func matchedFile(f string) {
+func matchedFile(f string, a *GrepArg) {
 	if !fullpath {
 		if fe, err := filepath.Rel(cwd, f); err == nil {
 			f = fe
 		}
 	}
-	printLine(f)
+	a.writeLine(f)
 }
 
 func matchedLine(f string, l, c int, m string, a *GrepArg) {
@@ -151,12 +166,12 @@ func matchedLine(f string, l, c int, m string, a *GrepArg) {
 				}
 			}
 			if zeroFile {
-				printStr(f + separator + ls + "\x00")
+				a.writeStr(f + separator + ls + "\x00")
 			} else {
-				printStr(f + separator + ls + lc)
+				a.writeStr(f + separator + ls + lc)
 			}
 		}
-		printLine(m)
+		a.writeLine(m)
 		return
 	}
 	if f != "" {
@@ -166,34 +181,34 @@ func matchedLine(f string, l, c int, m string, a *GrepArg) {
 			}
 		}
 		if zeroFile {
-			printStr(cMAGENTA + f + cRESET + "\x00" + cGREEN + ls + cCYAN + separator + cRESET)
+			a.writeStr(cMAGENTA + f + cRESET + "\x00" + cGREEN + ls + cCYAN + separator + cRESET)
 		} else {
-			printStr(cMAGENTA + f + cRESET + separator + cGREEN + ls + cCYAN + separator + cRESET)
+			a.writeStr(cMAGENTA + f + cRESET + separator + cGREEN + ls + cCYAN + separator + cRESET)
 		}
 	}
 	if re, ok := a.pattern.(*regexp.Regexp); ok {
 		ill := re.FindAllStringIndex(m, -1)
 		if len(ill) == 0 {
-			printLine(m)
+			a.writeLine(m)
 			return
 		}
 		for i, il := range ill {
 			if i > 0 {
-				printStr(m[ill[i-1][1]:il[0]] + cRED + m[il[0]:il[1]] + cRESET)
+				a.writeStr(m[ill[i-1][1]:il[0]] + cRED + m[il[0]:il[1]] + cRESET)
 			} else {
-				printStr(m[0:il[0]] + cRED + m[il[0]:il[1]] + cRESET)
+				a.writeStr(m[0:il[0]] + cRED + m[il[0]:il[1]] + cRESET)
 			}
 		}
-		printLine(m[ill[len(ill)-1][1]:])
+		a.writeLine(m[ill[len(ill)-1][1]:])
 	} else if s, ok := a.pattern.(string); ok {
 		l := len(s)
 		for {
 			i := strings.Index(m, s)
 			if i < 0 {
-				printLine(m)
+				a.writeLine(m)
 				break
 			}
-			printStr(m[0:i] + cRED + m[i:i+l] + cRESET)
+			a.writeStr(m[0:i] + cRED + m[i:i+l] + cRESET)
 			m = m[i+l:]
 		}
 	}
@@ -374,12 +389,12 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					matchedFile(path)
+					matchedFile(path, arg)
 					did = true
 					break
 				}
 				for _, mm := range matches {
-					countMatch++
+					atomic.AddInt64(&countMatch, 1)
 					if count {
 						continue
 					}
@@ -433,11 +448,11 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 					println("found("+enc+"):", path)
 				}
 				if list {
-					matchedFile(path)
+					matchedFile(path, arg)
 					did = true
 					break
 				}
-				countMatch++
+				atomic.AddInt64(&countMatch, 1)
 				if count {
 					did = true
 					continue
@@ -463,8 +478,8 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 						if after <= 0 && before <= 0 {
 							matchedLine(path, n, matchedIndex, string(t), arg)
 						} else {
-							if countMatch > 1 {
-								os.Stdout.WriteString("---\n")
+							if atomic.LoadInt64(&countMatch) > 1 {
+								arg.buf.WriteString("---\n")
 							}
 							bprev, bnext := next-l-2, next-l-2
 							lines := make([]string, 0, 10)
@@ -520,6 +535,14 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 }
 
 // Grep do grep.
+func flushArg(arg *GrepArg) {
+	if arg.buf.Len() > 0 {
+		printBytes(arg.buf.Bytes())
+		arg.buf.Reset()
+	}
+}
+
+// Grep do grep.
 func Grep(arg *GrepArg) bool {
 	n := false
 	if in, ok := arg.input.(io.Reader); ok {
@@ -529,6 +552,7 @@ func Grep(arg *GrepArg) bool {
 			if doGrep("stdin", f, arg) {
 				n = true
 			}
+			flushArg(arg)
 			if err != nil {
 				break
 			}
@@ -545,6 +569,7 @@ func Grep(arg *GrepArg) bool {
 		}
 		f := mf.Data()
 		r := doGrep(path, f, arg)
+		flushArg(arg)
 		mf.Close()
 		return r
 	}
@@ -553,7 +578,9 @@ func Grep(arg *GrepArg) bool {
 		errorLine(err.Error() + ": " + path)
 		return false
 	}
-	return doGrep(path, f, arg)
+	r := doGrep(path, f, arg)
+	flushArg(arg)
+	return r
 }
 
 func goGrep(ch chan *GrepArg, done chan bool, mu *sync.Mutex) {
@@ -594,13 +621,17 @@ func goGrep(ch chan *GrepArg, done chan bool, mu *sync.Mutex) {
 				continue
 			}
 		}
+		// Grep outside lock for parallel matching
+		matched := doGrep(path, data, arg)
+		// Flush buffered output under lock
 		mu.Lock()
-		if doGrep(path, data, arg) {
-			n++
-		}
+		flushArg(arg)
 		mu.Unlock()
 		if mf != nil {
 			mf.Close()
+		}
+		if matched {
+			n++
 		}
 	}
 	done <- n > 0
@@ -1109,7 +1140,7 @@ func doMain() int {
 		ch <- nil
 	}
 	if count {
-		fmt.Println(countMatch)
+		fmt.Println(atomic.LoadInt64(&countMatch))
 	}
 	result := false
 	for i := 0; i < nworkers; i++ {
