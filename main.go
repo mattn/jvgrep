@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"unicode/utf8"
 
@@ -548,7 +548,7 @@ func Grep(arg *GrepArg) bool {
 		mf.Close()
 		return r
 	}
-	f, err := ioutil.ReadFile(path)
+	f, err := os.ReadFile(path)
 	if err != nil {
 		errorLine(err.Error() + ": " + path)
 		return false
@@ -556,15 +556,51 @@ func Grep(arg *GrepArg) bool {
 	return doGrep(path, f, arg)
 }
 
-func goGrep(ch chan *GrepArg, done chan bool) {
+func goGrep(ch chan *GrepArg, done chan bool, mu *sync.Mutex) {
 	n := 0
 	for {
 		arg := <-ch
 		if arg == nil {
 			break
 		}
-		if Grep(arg) {
+		path, ok := arg.input.(string)
+		if !ok {
+			mu.Lock()
+			if Grep(arg) {
+				n++
+			}
+			mu.Unlock()
+			continue
+		}
+		// Read file outside lock for parallel I/O
+		var data []byte
+		var mf *mmap.Memfile
+		var err error
+		if arg.size > 65536*4 {
+			mf, err = mmap.Open(path)
+			if err != nil {
+				mu.Lock()
+				errorLine(err.Error() + ": " + path)
+				mu.Unlock()
+				continue
+			}
+			data = mf.Data()
+		} else {
+			data, err = os.ReadFile(path)
+			if err != nil {
+				mu.Lock()
+				errorLine(err.Error() + ": " + path)
+				mu.Unlock()
+				continue
+			}
+		}
+		mu.Lock()
+		if doGrep(path, data, arg) {
 			n++
+		}
+		mu.Unlock()
+		if mf != nil {
+			mf.Close()
 		}
 	}
 	done <- n > 0
@@ -790,7 +826,7 @@ func doMain() int {
 	instr := ""
 	argindex := 0
 	if len(infile) > 0 {
-		b, err := ioutil.ReadFile(infile)
+		b, err := os.ReadFile(infile)
 		if err != nil {
 			errorLine(err.Error())
 			os.Exit(1)
@@ -910,9 +946,13 @@ func doMain() int {
 
 	globmask := ""
 
-	ch := make(chan *GrepArg, 20)
-	done := make(chan bool)
-	go goGrep(ch, done)
+	var mu sync.Mutex
+	nworkers := runtime.NumCPU()
+	ch := make(chan *GrepArg, nworkers*2)
+	done := make(chan bool, nworkers)
+	for i := 0; i < nworkers; i++ {
+		go goGrep(ch, done, &mu)
+	}
 	nargs := len(args[argindex:])
 	for _, arg := range args[argindex:] {
 		globmask = ""
@@ -1053,26 +1093,31 @@ func doMain() int {
 				if verbose {
 					println("search:", path)
 				}
-				fi, err := os.Lstat(path)
-				if err == nil {
-					ch <- &GrepArg{
-						pattern: pattern,
-						input:   path,
-						size:    fi.Size(),
-						single:  false,
-						atty:    atty,
-						ascii:   ascii,
-					}
+				ch <- &GrepArg{
+					pattern: pattern,
+					input:   path,
+					size:    mode.Size(),
+					single:  false,
+					atty:    atty,
+					ascii:   ascii,
 				}
 			}
 			return nil
 		})
 	}
-	ch <- nil
+	for i := 0; i < nworkers; i++ {
+		ch <- nil
+	}
 	if count {
 		fmt.Println(countMatch)
 	}
-	if <-done == false {
+	result := false
+	for i := 0; i < nworkers; i++ {
+		if <-done {
+			result = true
+		}
+	}
+	if !result {
 		return 1
 	}
 	return 0
