@@ -372,6 +372,14 @@ func doGrepFixedUTF8(path string, fb []byte, arg *GrepArg, needle []byte) bool {
 		arg.bom = nil
 	}
 
+	if list && !invert {
+		if bytes.Index(fb, needle) >= 0 {
+			matchedFile(path, arg)
+			return true
+		}
+		return false
+	}
+
 	var matched bool
 	lineNo := 0
 	start := 0
@@ -429,10 +437,6 @@ func doGrepFixedUTF8(path string, fb []byte, arg *GrepArg, needle []byte) bool {
 					errorLine(fmt.Sprintf("matched binary file: %s", path))
 					return true
 				}
-				if !utf8.Valid(part) {
-					errorLine(fmt.Sprintf("matched binary file: %s", path))
-					return true
-				}
 				if number {
 					matchedLine(path, lineNo, mm[0], string(part), arg)
 				} else {
@@ -450,10 +454,6 @@ func doGrepFixedUTF8(path string, fb []byte, arg *GrepArg, needle []byte) bool {
 					matchedIndex = indexes[0][0]
 				}
 				if arg.atty && maybeBinary(line) {
-					errorLine(fmt.Sprintf("matched binary file: %s", path))
-					return true
-				}
-				if !utf8.Valid(line) {
 					errorLine(fmt.Sprintf("matched binary file: %s", path))
 					return true
 				}
@@ -1362,9 +1362,9 @@ func doMain() int {
 			println("root:", root)
 		}
 
-		var gim *gitIgnoreManager
 		absRoot, _ := filepath.Abs(root)
 		absRoot = filepath.ToSlash(absRoot)
+		var gim *gitIgnoreManager
 		if useGitIgnore {
 			gim = &gitIgnoreManager{}
 		}
