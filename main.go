@@ -84,7 +84,46 @@ const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|` +
 	`\.pdf$|\.doc[x]?$|\.xls[x]?$|\.ppt[x]?$|` +
 	`\.mp[34]$|\.avi$|\.mov$|\.wmv$|\.flv$|\.webm$|\.mkv$|\.wav$|\.flac$|\.ogg$|` +
 	`\.ttf$|\.otf$|\.woff2?$|\.eot$|` +
-	`\.[eE][xX][eE]~?$|(^|\/)tags$`
+	`\.[eE][xX][eE]~?$|(^|\/)tags$|` +
+	`(^|\/)node_modules$|(^|\/)__pycache__$|(^|\/)site-packages$|` +
+	`(^|\/)\.tox$|(^|\/)\.mypy_cache$|(^|\/)\.pytest_cache$`
+
+// excludeExts is a fast extension-based lookup used when exclude is the default pattern.
+var excludeExts = map[string]bool{
+	".o": true, ".obj": true, ".a": true, ".rlib": true,
+	".so": true, ".dll": true, ".dylib": true, ".lib": true,
+	".class": true, ".jar": true, ".war": true, ".pyc": true, ".pyo": true, ".wasm": true,
+	".jpg": true, ".jpeg": true, ".gif": true, ".png": true, ".bmp": true,
+	".ico": true, ".tif": true, ".tiff": true, ".webp": true, ".svg": true,
+	".gz": true, ".zip": true, ".tar": true, ".bz2": true, ".xz": true,
+	".7z": true, ".rar": true, ".zst": true,
+	".pdf": true, ".doc": true, ".docx": true, ".xls": true, ".xlsx": true,
+	".ppt": true, ".pptx": true,
+	".mp3": true, ".mp4": true, ".avi": true, ".mov": true, ".wmv": true,
+	".flv": true, ".webm": true, ".mkv": true, ".wav": true, ".flac": true, ".ogg": true,
+	".ttf": true, ".otf": true, ".woff": true, ".woff2": true, ".eot": true,
+	".exe": true,
+}
+
+// excludeDirs is a fast directory name lookup used when exclude is the default pattern.
+var excludeDirs = map[string]bool{
+	".git": true, ".svn": true, ".hg": true,
+	"node_modules": true, "__pycache__": true, "site-packages": true,
+	".tox": true, ".mypy_cache": true, ".pytest_cache": true,
+}
+
+// isDefaultExcluded performs fast exclusion checks using maps instead of regex.
+func isDefaultExcluded(path string, isDir bool) bool {
+	base := filepath.Base(path)
+	if isDir {
+		return excludeDirs[base]
+	}
+	if base == "tags" {
+		return true
+	}
+	ext := strings.ToLower(filepath.Ext(base))
+	return excludeExts[ext]
+}
 
 var (
 	encs         string       // encodings
@@ -116,34 +155,26 @@ var (
 	before       = 0          // show before lines
 	separator    = ":"        // column separator
 	useGitIgnore bool         // respect .gitignore files
+	skipHidden   bool         // skip hidden files/directories
 )
+
+type ignoreChecker struct {
+	dir string
+	gi  *ignore.GitIgnore
+}
 
 type gitIgnoreManager struct {
 	matchers sync.Map // dir path -> *ignore.GitIgnore (or nil)
-	gitRoot  string
+	gitRoots sync.Map // dir path -> bool
+	chains   sync.Map // dir path -> []ignoreChecker (cached ancestor chain)
 }
 
-func findGitRoot(start string) string {
-	dir, _ := filepath.Abs(start)
-	for {
-		if fi, err := os.Stat(filepath.Join(dir, ".git")); err == nil && fi.IsDir() {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return ""
-		}
-		dir = parent
-	}
-}
-
-func (g *gitIgnoreManager) load(dir string) *ignore.GitIgnore {
+func (g *gitIgnoreManager) loadGitIgnore(dir string) *ignore.GitIgnore {
 	if v, ok := g.matchers.Load(dir); ok {
 		gi, _ := v.(*ignore.GitIgnore)
 		return gi
 	}
-	ignorePath := filepath.Join(dir, ".gitignore")
-	gi, err := ignore.CompileIgnoreFile(ignorePath)
+	gi, err := ignore.CompileIgnoreFile(dir + "/.gitignore")
 	if err != nil {
 		g.matchers.Store(dir, (*ignore.GitIgnore)(nil))
 		return nil
@@ -152,35 +183,49 @@ func (g *gitIgnoreManager) load(dir string) *ignore.GitIgnore {
 	return gi
 }
 
-func (g *gitIgnoreManager) isIgnored(path string, isDir bool) bool {
-	// Collect ancestor directories from gitRoot down to parent of path
-	dir := filepath.Dir(path)
+func (g *gitIgnoreManager) isGitRoot(dir string) bool {
+	if v, ok := g.gitRoots.Load(dir); ok {
+		return v.(bool)
+	}
+	_, err := os.Stat(dir + "/.git")
+	isRoot := err == nil
+	g.gitRoots.Store(dir, isRoot)
+	return isRoot
+}
+
+// getChain returns the cached list of ancestor ignoreCheckers for a directory.
+func (g *gitIgnoreManager) getChain(dir string) []ignoreChecker {
+	if v, ok := g.chains.Load(dir); ok {
+		return v.([]ignoreChecker)
+	}
+	// Build chain by walking up to the nearest git root
 	var dirs []string
 	for d := dir; ; d = filepath.Dir(d) {
 		dirs = append(dirs, d)
-		if d == g.gitRoot || d == filepath.Dir(d) {
+		if g.isGitRoot(d) || d == filepath.Dir(d) {
 			break
 		}
 	}
-	// Reverse so we check from root downward
-	for i, j := 0, len(dirs)-1; i < j; i, j = i+1, j-1 {
-		dirs[i], dirs[j] = dirs[j], dirs[i]
+	var chain []ignoreChecker
+	// Iterate from root downward
+	for i := len(dirs) - 1; i >= 0; i-- {
+		if gi := g.loadGitIgnore(dirs[i]); gi != nil {
+			chain = append(chain, ignoreChecker{dir: dirs[i], gi: gi})
+		}
 	}
+	g.chains.Store(dir, chain)
+	return chain
+}
 
-	for _, d := range dirs {
-		gi := g.load(d)
-		if gi == nil {
-			continue
-		}
-		rel, err := filepath.Rel(d, path)
-		if err != nil {
-			continue
-		}
-		rel = filepath.ToSlash(rel)
+func (g *gitIgnoreManager) isIgnored(absPath string, isDir bool) bool {
+	dir := filepath.Dir(absPath)
+	chain := g.getChain(dir)
+	for _, c := range chain {
+		rel := absPath[len(c.dir)+1:]
 		if isDir {
 			rel += "/"
 		}
-		if gi.MatchesPath(rel) {
+		if c.gi.MatchesPath(rel) {
 			return true
 		}
 	}
@@ -747,6 +792,7 @@ Output control:
   -8               : show result as utf-8 text
   -R               : search files recursively
   --gitignore      : respect .gitignore files
+  --skip-hidden    : skip hidden files and directories
   --exclude=REGEXP : exclude files: specify as REGEXP
                      (default: %s)
                      (specifying empty string won't exclude any files)
@@ -886,6 +932,8 @@ func parseOptions() []string {
 				zeroData = true
 			case name == "gitignore":
 				useGitIgnore = true
+			case name == "skip-hidden":
+				skipHidden = true
 			case name == "tty":
 				allowTty = true
 			case name == "version":
@@ -1003,13 +1051,18 @@ func doMain() int {
 	if exclude == "" {
 		exclude = os.Getenv("JVGREP_EXCLUDE")
 	}
-	if exclude == "" {
+	useDefaultExclude := exclude == ""
+	if useDefaultExclude {
 		exclude = excludeDefaults
 	}
-	ere, err := regexp.Compile(exclude)
-	if err != nil {
-		errorLine(err.Error())
-		os.Exit(1)
+	var ere *regexp.Regexp
+	if !useDefaultExclude {
+		var err error
+		ere, err = regexp.Compile(exclude)
+		if err != nil {
+			errorLine(err.Error())
+			os.Exit(1)
+		}
 	}
 
 	atty := false
@@ -1185,28 +1238,77 @@ func doMain() int {
 		}
 
 		var gim *gitIgnoreManager
+		absRoot, _ := filepath.Abs(root)
+		absRoot = filepath.ToSlash(absRoot)
 		if useGitIgnore {
-			absRoot, _ := filepath.Abs(root)
-			if gr := findGitRoot(absRoot); gr != "" {
-				gim = &gitIgnoreManager{gitRoot: gr}
-			}
+			gim = &gitIgnoreManager{}
 		}
 
+		isAbsRoot := filepath.IsAbs(root)
 		walker.Walk(root, func(path string, mode os.FileInfo) error {
 			path = filepath.ToSlash(path)
 
+			// Fast base name extraction without filepath.Base
+			base := path
+			if i := strings.LastIndexByte(path, '/'); i >= 0 {
+				base = path[i+1:]
+			}
+
+			isDir := mode.IsDir()
+
+			if skipHidden && len(base) > 1 && base[0] == '.' {
+				if isDir {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
 			if gim != nil {
-				absPath, _ := filepath.Abs(path)
-				if gim.isIgnored(absPath, mode.IsDir()) {
-					if mode.IsDir() {
+				// Register .git directories as git roots for their parent
+				if isDir && base == ".git" {
+					if i := strings.LastIndexByte(path, '/'); i >= 0 {
+						var parentAbs string
+						if isAbsRoot {
+							parentAbs = path[:i]
+						} else {
+							parentAbs = absRoot + "/" + path[:i]
+						}
+						gim.gitRoots.Store(parentAbs, true)
+					}
+					return filepath.SkipDir
+				}
+
+				var absPath string
+				if isAbsRoot {
+					absPath = path
+				} else {
+					absPath = absRoot + "/" + path
+				}
+				if gim.isIgnored(absPath, isDir) {
+					if isDir {
 						return filepath.SkipDir
 					}
 					return nil
 				}
 			}
 
-			if ere != nil && ere.MatchString(path) {
-				if mode.IsDir() {
+			if useDefaultExclude {
+				if isDir {
+					if excludeDirs[base] {
+						return filepath.SkipDir
+					}
+				} else {
+					if base == "tags" {
+						return nil
+					}
+					if dot := strings.LastIndexByte(base, '.'); dot >= 0 {
+						if excludeExts[strings.ToLower(base[dot:])] {
+							return nil
+						}
+					}
+				}
+			} else if ere != nil && ere.MatchString(path) {
+				if isDir {
 					return filepath.SkipDir
 				}
 				return nil
