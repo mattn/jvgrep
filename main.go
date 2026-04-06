@@ -76,7 +76,14 @@ func (a *GrepArg) writeLine(s string) {
 	}
 }
 
-const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|\.o$|\.obj$|\.a$|\.rlib$|\.[jJ][pP][gG]$|\.gif$|\.png$|\.bmp$|\.gz$|\.zip$|\.[eE][xX][eE]~?$|(^|\/)tags$`
+const excludeDefaults = `(^|\/)\.git$|(^|\/)\.svn$|(^|\/)\.hg$|` +
+	`\.o$|\.obj$|\.a$|\.rlib$|\.so$|\.dll$|\.dylib$|\.lib$|\.class$|\.jar$|\.war$|\.pyc$|\.pyo$|\.wasm$|` +
+	`\.[jJ][pP][gG]$|\.gif$|\.png$|\.bmp$|\.ico$|\.tiff?$|\.webp$|\.svg$|` +
+	`\.gz$|\.zip$|\.tar$|\.bz2$|\.xz$|\.7z$|\.rar$|\.zst$|` +
+	`\.pdf$|\.doc[x]?$|\.xls[x]?$|\.ppt[x]?$|` +
+	`\.mp[34]$|\.avi$|\.mov$|\.wmv$|\.flv$|\.webm$|\.mkv$|\.wav$|\.flac$|\.ogg$|` +
+	`\.ttf$|\.otf$|\.woff2?$|\.eot$|` +
+	`\.[eE][xX][eE]~?$|(^|\/)tags$`
 
 var (
 	encs         string       // encodings
@@ -226,7 +233,7 @@ func maybeBinary(b []byte) bool {
 		l /= 2
 	}
 	for i := 0; i < l; i++ {
-		if 0 < b[i] && b[i] < 0x9 {
+		if b[i] == 0x00 || (0 < b[i] && b[i] < 0x9) {
 			return true
 		}
 	}
