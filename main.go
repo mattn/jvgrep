@@ -342,11 +342,10 @@ func errorLine(s string) {
 }
 
 func maybeBinary(b []byte) bool {
+	// Check only the first 8KB, like ripgrep.
 	l := len(b)
-	if l > 10000000 {
-		l = 1024
-	} else if l > 1024 {
-		l /= 2
+	if l > 8192 {
+		l = 8192
 	}
 	for i := 0; i < l; i++ {
 		if b[i] == 0x00 || (0 < b[i] && b[i] < 0x9) {
