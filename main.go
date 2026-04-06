@@ -169,69 +169,6 @@ type gitIgnoreManager struct {
 	chains   sync.Map // dir path -> []ignoreChecker (cached ancestor chain)
 }
 
-func (g *gitIgnoreManager) loadGitIgnore(dir string) *ignore.GitIgnore {
-	if v, ok := g.matchers.Load(dir); ok {
-		gi, _ := v.(*ignore.GitIgnore)
-		return gi
-	}
-	gi, err := ignore.CompileIgnoreFile(dir + "/.gitignore")
-	if err != nil {
-		g.matchers.Store(dir, (*ignore.GitIgnore)(nil))
-		return nil
-	}
-	g.matchers.Store(dir, gi)
-	return gi
-}
-
-func (g *gitIgnoreManager) isGitRoot(dir string) bool {
-	if v, ok := g.gitRoots.Load(dir); ok {
-		return v.(bool)
-	}
-	_, err := os.Stat(dir + "/.git")
-	isRoot := err == nil
-	g.gitRoots.Store(dir, isRoot)
-	return isRoot
-}
-
-// getChain returns the cached list of ancestor ignoreCheckers for a directory.
-func (g *gitIgnoreManager) getChain(dir string) []ignoreChecker {
-	if v, ok := g.chains.Load(dir); ok {
-		return v.([]ignoreChecker)
-	}
-	// Build chain by walking up to the nearest git root
-	var dirs []string
-	for d := dir; ; d = filepath.Dir(d) {
-		dirs = append(dirs, d)
-		if g.isGitRoot(d) || d == filepath.Dir(d) {
-			break
-		}
-	}
-	var chain []ignoreChecker
-	// Iterate from root downward
-	for i := len(dirs) - 1; i >= 0; i-- {
-		if gi := g.loadGitIgnore(dirs[i]); gi != nil {
-			chain = append(chain, ignoreChecker{dir: dirs[i], gi: gi})
-		}
-	}
-	g.chains.Store(dir, chain)
-	return chain
-}
-
-func (g *gitIgnoreManager) isIgnored(absPath string, isDir bool) bool {
-	dir := filepath.Dir(absPath)
-	chain := g.getChain(dir)
-	for _, c := range chain {
-		rel := absPath[len(c.dir)+1:]
-		if isDir {
-			rel += "/"
-		}
-		if c.gi.MatchesPath(rel) {
-			return true
-		}
-	}
-	return false
-}
-
 var replbytes = []byte{0xef, 0xbf, 0xbd} // bytes representation of the replacement rune '\uFFFD'
 
 func printLineZero(s string) {
@@ -355,6 +292,188 @@ func maybeBinary(b []byte) bool {
 	return false
 }
 
+func (g *gitIgnoreManager) loadGitIgnore(dir string) *ignore.GitIgnore {
+	if v, ok := g.matchers.Load(dir); ok {
+		gi, _ := v.(*ignore.GitIgnore)
+		return gi
+	}
+	gi, err := ignore.CompileIgnoreFile(dir + "/.gitignore")
+	if err != nil {
+		g.matchers.Store(dir, (*ignore.GitIgnore)(nil))
+		return nil
+	}
+	g.matchers.Store(dir, gi)
+	return gi
+}
+
+func (g *gitIgnoreManager) isGitRoot(dir string) bool {
+	if v, ok := g.gitRoots.Load(dir); ok {
+		return v.(bool)
+	}
+	_, err := os.Stat(dir + "/.git")
+	isRoot := err == nil
+	g.gitRoots.Store(dir, isRoot)
+	return isRoot
+}
+
+func (g *gitIgnoreManager) getChain(dir string) []ignoreChecker {
+	if v, ok := g.chains.Load(dir); ok {
+		return v.([]ignoreChecker)
+	}
+	var dirs []string
+	for d := dir; ; d = filepath.Dir(d) {
+		dirs = append(dirs, d)
+		if g.isGitRoot(d) || d == filepath.Dir(d) {
+			break
+		}
+	}
+	var chain []ignoreChecker
+	for i := len(dirs) - 1; i >= 0; i-- {
+		if gi := g.loadGitIgnore(dirs[i]); gi != nil {
+			chain = append(chain, ignoreChecker{dir: dirs[i], gi: gi})
+		}
+	}
+	g.chains.Store(dir, chain)
+	return chain
+}
+
+func (g *gitIgnoreManager) isIgnored(absPath string, isDir bool) bool {
+	dir := filepath.Dir(absPath)
+	chain := g.getChain(dir)
+	for _, c := range chain {
+		rel := absPath[len(c.dir)+1:]
+		if isDir {
+			rel += "/"
+		}
+		if c.gi.MatchesPath(rel) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchFixed(data, needle []byte) []int {
+	idx := bytes.Index(data, needle)
+	if idx < 0 {
+		return nil
+	}
+	return []int{idx, idx + len(needle)}
+}
+
+func doGrepFixedUTF8(path string, fb []byte, arg *GrepArg, needle []byte) bool {
+	if ignorebinary && maybeBinary(fb) {
+		return false
+	}
+
+	if len(fb) >= 3 && fb[0] == 0xef && fb[1] == 0xbb && fb[2] == 0xbf {
+		arg.bom = fb[:3]
+		fb = fb[3:]
+	} else {
+		arg.bom = nil
+	}
+
+	var matched bool
+	lineNo := 0
+	start := 0
+	size := len(fb)
+
+	for start <= size {
+		end := size
+		if off := bytes.IndexByte(fb[start:], '\n'); off >= 0 {
+			end = start + off
+		}
+		lineNo++
+		line := fb[start:end]
+		if l := len(line); l > 0 && line[l-1] == '\r' {
+			line = line[:l-1]
+		}
+
+		var indexes [][]int
+		if only {
+			offset := 0
+			for offset <= len(line)-len(needle) {
+				idx := bytes.Index(line[offset:], needle)
+				if idx < 0 {
+					break
+				}
+				idx += offset
+				indexes = append(indexes, []int{idx, idx + len(needle)})
+				offset = idx + 1
+			}
+		} else if idx := matchFixed(line, needle); idx != nil {
+			indexes = append(indexes, idx)
+		}
+
+		hasMatch := len(indexes) > 0
+		if hasMatch == invert {
+			if end == size {
+				break
+			}
+			start = end + 1
+			continue
+		}
+		if list {
+			matchedFile(path, arg)
+			return true
+		}
+
+		if only {
+			for _, mm := range indexes {
+				atomic.AddInt64(&countMatch, 1)
+				if count {
+					matched = true
+					continue
+				}
+				part := line[mm[0]:mm[1]]
+				if arg.atty && maybeBinary(part) {
+					errorLine(fmt.Sprintf("matched binary file: %s", path))
+					return true
+				}
+				if !utf8.Valid(part) {
+					errorLine(fmt.Sprintf("matched binary file: %s", path))
+					return true
+				}
+				if number {
+					matchedLine(path, lineNo, mm[0], string(part), arg)
+				} else {
+					matchedLine("", 0, mm[0], string(part), arg)
+				}
+				matched = true
+			}
+		} else {
+			atomic.AddInt64(&countMatch, 1)
+			if count {
+				matched = true
+			} else {
+				matchedIndex := -1
+				if hasMatch {
+					matchedIndex = indexes[0][0]
+				}
+				if arg.atty && maybeBinary(line) {
+					errorLine(fmt.Sprintf("matched binary file: %s", path))
+					return true
+				}
+				if !utf8.Valid(line) {
+					errorLine(fmt.Sprintf("matched binary file: %s", path))
+					return true
+				}
+				if arg.single && !number {
+					matchedLine("", -1, matchedIndex, string(line), arg)
+				} else {
+					matchedLine(path, lineNo, matchedIndex, string(line), arg)
+				}
+				matched = true
+			}
+		}
+
+		if end == size {
+			break
+		}
+		start = end + 1
+	}
+	return matched
+}
+
 func doGrep(path string, fb []byte, arg *GrepArg) bool {
 	encs := encodings
 
@@ -388,6 +507,10 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 
 	re, _ := arg.pattern.(*regexp.Regexp)
 	rs, _ := arg.pattern.(string)
+
+	if re == nil && rs != "" && !ignorecase && len(encs) == 1 && encs[0] == "utf-8" {
+		return doGrepFixedUTF8(path, fb, arg, []byte(rs))
+	}
 
 	var okay bool
 	var f []byte
@@ -1111,7 +1234,10 @@ func doMain() int {
 	globmask := ""
 
 	var mu sync.Mutex
-	nworkers := runtime.NumCPU()
+	nworkers := runtime.GOMAXPROCS(0)
+	if nworkers < 1 {
+		nworkers = 1
+	}
 	ch := make(chan *GrepArg, nworkers*2)
 	done := make(chan bool, nworkers)
 	for i := 0; i < nworkers; i++ {
@@ -1247,7 +1373,6 @@ func doMain() int {
 		walker.Walk(root, func(path string, mode os.FileInfo) error {
 			path = filepath.ToSlash(path)
 
-			// Fast base name extraction without filepath.Base
 			base := path
 			if i := strings.LastIndexByte(path, '/'); i >= 0 {
 				base = path[i+1:]
@@ -1263,7 +1388,6 @@ func doMain() int {
 			}
 
 			if gim != nil {
-				// Register .git directories as git roots for their parent
 				if isDir && base == ".git" {
 					if i := strings.LastIndexByte(path, '/'); i >= 0 {
 						var parentAbs string
