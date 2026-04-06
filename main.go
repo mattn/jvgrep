@@ -21,6 +21,7 @@ import (
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 	"github.com/mattn/jvgrep/v5/mmap"
+	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/saracen/walker"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/transform"
@@ -114,7 +115,77 @@ var (
 	after        = 0          // show after lines
 	before       = 0          // show before lines
 	separator    = ":"        // column separator
+	useGitIgnore bool         // respect .gitignore files
 )
+
+type gitIgnoreManager struct {
+	matchers sync.Map // dir path -> *ignore.GitIgnore (or nil)
+	gitRoot  string
+}
+
+func findGitRoot(start string) string {
+	dir, _ := filepath.Abs(start)
+	for {
+		if fi, err := os.Stat(filepath.Join(dir, ".git")); err == nil && fi.IsDir() {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
+func (g *gitIgnoreManager) load(dir string) *ignore.GitIgnore {
+	if v, ok := g.matchers.Load(dir); ok {
+		gi, _ := v.(*ignore.GitIgnore)
+		return gi
+	}
+	ignorePath := filepath.Join(dir, ".gitignore")
+	gi, err := ignore.CompileIgnoreFile(ignorePath)
+	if err != nil {
+		g.matchers.Store(dir, (*ignore.GitIgnore)(nil))
+		return nil
+	}
+	g.matchers.Store(dir, gi)
+	return gi
+}
+
+func (g *gitIgnoreManager) isIgnored(path string, isDir bool) bool {
+	// Collect ancestor directories from gitRoot down to parent of path
+	dir := filepath.Dir(path)
+	var dirs []string
+	for d := dir; ; d = filepath.Dir(d) {
+		dirs = append(dirs, d)
+		if d == g.gitRoot || d == filepath.Dir(d) {
+			break
+		}
+	}
+	// Reverse so we check from root downward
+	for i, j := 0, len(dirs)-1; i < j; i, j = i+1, j-1 {
+		dirs[i], dirs[j] = dirs[j], dirs[i]
+	}
+
+	for _, d := range dirs {
+		gi := g.load(d)
+		if gi == nil {
+			continue
+		}
+		rel, err := filepath.Rel(d, path)
+		if err != nil {
+			continue
+		}
+		rel = filepath.ToSlash(rel)
+		if isDir {
+			rel += "/"
+		}
+		if gi.MatchesPath(rel) {
+			return true
+		}
+	}
+	return false
+}
 
 var replbytes = []byte{0xef, 0xbf, 0xbd} // bytes representation of the replacement rune '\uFFFD'
 
@@ -675,6 +746,7 @@ Miscellaneous:
 Output control:
   -8               : show result as utf-8 text
   -R               : search files recursively
+  --gitignore      : respect .gitignore files
   --exclude=REGEXP : exclude files: specify as REGEXP
                      (default: %s)
                      (specifying empty string won't exclude any files)
@@ -812,6 +884,8 @@ func parseOptions() []string {
 				zeroFile = true
 			case name == "null-data":
 				zeroData = true
+			case name == "gitignore":
+				useGitIgnore = true
 			case name == "tty":
 				allowTty = true
 			case name == "version":
@@ -1110,8 +1184,26 @@ func doMain() int {
 			println("root:", root)
 		}
 
+		var gim *gitIgnoreManager
+		if useGitIgnore {
+			absRoot, _ := filepath.Abs(root)
+			if gr := findGitRoot(absRoot); gr != "" {
+				gim = &gitIgnoreManager{gitRoot: gr}
+			}
+		}
+
 		walker.Walk(root, func(path string, mode os.FileInfo) error {
 			path = filepath.ToSlash(path)
+
+			if gim != nil {
+				absPath, _ := filepath.Abs(path)
+				if gim.isIgnored(absPath, mode.IsDir()) {
+					if mode.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+			}
 
 			if ere != nil && ere.MatchString(path) {
 				if mode.IsDir() {
