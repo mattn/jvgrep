@@ -29,7 +29,7 @@ import (
 
 const (
 	name     = "jvgrep"
-	version  = "5.8.15"
+	version  = "5.8.16"
 	revision = "HEAD"
 )
 
