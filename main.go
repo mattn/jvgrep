@@ -61,11 +61,27 @@ type GrepArg struct {
 	atty    bool
 	bom     []byte
 	ascii   bool
+	output  string
+	needle  []byte
+	folded  []byte
 	buf     bytes.Buffer
 }
 
 func (a *GrepArg) writeStr(s string) {
 	a.buf.WriteString(s)
+}
+
+func (a *GrepArg) writeBytes(b []byte) {
+	a.buf.Write(b)
+}
+
+func (a *GrepArg) writeByte(b byte) {
+	a.buf.WriteByte(b)
+}
+
+func (a *GrepArg) writeInt(n int) {
+	var tmp [20]byte
+	a.buf.Write(strconv.AppendInt(tmp[:0], int64(n), 10))
 }
 
 func (a *GrepArg) writeLine(s string) {
@@ -200,7 +216,9 @@ func printBytesNorm(b []byte) {
 var printBytes = printBytesNorm
 
 func matchedFile(f string, a *GrepArg) {
-	if !fullpath {
+	if a.output != "" {
+		f = a.output
+	} else if !fullpath {
 		if fe, err := filepath.Rel(cwd, f); err == nil {
 			f = fe
 		}
@@ -209,6 +227,9 @@ func matchedFile(f string, a *GrepArg) {
 }
 
 func matchedLine(f string, l, c int, m string, a *GrepArg) {
+	if f != "" && a.output != "" {
+		f = a.output
+	}
 	lc := separator
 	if l < 0 {
 		lc = "-"
@@ -220,7 +241,7 @@ func matchedLine(f string, l, c int, m string, a *GrepArg) {
 	}
 	if !a.atty {
 		if f != "" {
-			if !fullpath {
+			if a.output == "" && !fullpath {
 				if fe, err := filepath.Rel(cwd, f); err == nil {
 					f = fe
 				}
@@ -235,7 +256,7 @@ func matchedLine(f string, l, c int, m string, a *GrepArg) {
 		return
 	}
 	if f != "" {
-		if !fullpath {
+		if a.output == "" && !fullpath {
 			if fe, err := filepath.Rel(cwd, f); err == nil {
 				f = fe
 			}
@@ -271,6 +292,46 @@ func matchedLine(f string, l, c int, m string, a *GrepArg) {
 			a.writeStr(m[0:i] + cRED + m[i:i+l] + cRESET)
 			m = m[i+l:]
 		}
+	}
+}
+
+func matchedLineBytes(f string, l, c int, m []byte, a *GrepArg) {
+	if a.atty {
+		matchedLine(f, l, c, string(m), a)
+		return
+	}
+	if f != "" && a.output != "" {
+		f = a.output
+	}
+	lc := separator
+	if l < 0 {
+		lc = "-"
+		l = -l
+	}
+	if f != "" {
+		if a.output == "" && !fullpath {
+			if fe, err := filepath.Rel(cwd, f); err == nil {
+				f = fe
+			}
+		}
+		a.writeStr(f)
+		a.writeStr(separator)
+		a.writeInt(l)
+		if column && c != -1 {
+			a.writeByte(':')
+			a.writeInt(c + 1)
+		}
+		if zeroFile {
+			a.writeByte(0)
+		} else {
+			a.writeStr(lc)
+		}
+	}
+	a.writeBytes(m)
+	if zeroData {
+		a.writeByte(0)
+	} else {
+		a.writeByte('\n')
 	}
 }
 
@@ -360,6 +421,47 @@ func matchFixed(data, needle []byte) []int {
 	return []int{idx, idx + len(needle)}
 }
 
+func lowerASCIIByte(b byte) byte {
+	if 'A' <= b && b <= 'Z' {
+		return b + ('a' - 'A')
+	}
+	return b
+}
+
+func lowerASCIIBytes(dst, src []byte) {
+	for i, b := range src {
+		dst[i] = lowerASCIIByte(b)
+	}
+}
+
+func indexFoldASCII(data, needle []byte) int {
+	nl := len(needle)
+	dl := len(data)
+	if nl == 0 {
+		return 0
+	}
+	if nl > dl {
+		return -1
+	}
+	last := dl - nl
+	first := needle[0]
+	for i := 0; i <= last; i++ {
+		if lowerASCIIByte(data[i]) != first {
+			continue
+		}
+		j := 1
+		for ; j < nl; j++ {
+			if lowerASCIIByte(data[i+j]) != needle[j] {
+				break
+			}
+		}
+		if j == nl {
+			return i
+		}
+	}
+	return -1
+}
+
 func doGrepFixedUTF8(path string, fb []byte, arg *GrepArg, needle []byte) bool {
 	if ignorebinary && maybeBinary(fb) {
 		return false
@@ -438,9 +540,9 @@ func doGrepFixedUTF8(path string, fb []byte, arg *GrepArg, needle []byte) bool {
 					return true
 				}
 				if number {
-					matchedLine(path, lineNo, mm[0], string(part), arg)
+					matchedLineBytes(path, lineNo, mm[0], part, arg)
 				} else {
-					matchedLine("", 0, mm[0], string(part), arg)
+					matchedLineBytes("", 0, mm[0], part, arg)
 				}
 				matched = true
 			}
@@ -458,9 +560,123 @@ func doGrepFixedUTF8(path string, fb []byte, arg *GrepArg, needle []byte) bool {
 					return true
 				}
 				if arg.single && !number {
-					matchedLine("", -1, matchedIndex, string(line), arg)
+					matchedLineBytes("", -1, matchedIndex, line, arg)
 				} else {
-					matchedLine(path, lineNo, matchedIndex, string(line), arg)
+					matchedLineBytes(path, lineNo, matchedIndex, line, arg)
+				}
+				matched = true
+			}
+		}
+
+		if end == size {
+			break
+		}
+		start = end + 1
+	}
+	return matched
+}
+
+func doGrepFixedUTF8FoldASCII(path string, fb []byte, arg *GrepArg, needle []byte) bool {
+	if ignorebinary && maybeBinary(fb) {
+		return false
+	}
+
+	if len(fb) >= 3 && fb[0] == 0xef && fb[1] == 0xbb && fb[2] == 0xbf {
+		arg.bom = fb[:3]
+		fb = fb[3:]
+	} else {
+		arg.bom = nil
+	}
+
+	if list && !invert {
+		if indexFoldASCII(fb, needle) >= 0 {
+			matchedFile(path, arg)
+			return true
+		}
+		return false
+	}
+
+	var matched bool
+	lineNo := 0
+	start := 0
+	size := len(fb)
+
+	for start <= size {
+		end := size
+		if off := bytes.IndexByte(fb[start:], '\n'); off >= 0 {
+			end = start + off
+		}
+		lineNo++
+		line := fb[start:end]
+		if l := len(line); l > 0 && line[l-1] == '\r' {
+			line = line[:l-1]
+		}
+
+		var indexes [][]int
+		if only {
+			offset := 0
+			for offset <= len(line)-len(needle) {
+				idx := indexFoldASCII(line[offset:], needle)
+				if idx < 0 {
+					break
+				}
+				idx += offset
+				indexes = append(indexes, []int{idx, idx + len(needle)})
+				offset = idx + 1
+			}
+		} else if idx := indexFoldASCII(line, needle); idx >= 0 {
+			indexes = append(indexes, []int{idx, idx + len(needle)})
+		}
+
+		hasMatch := len(indexes) > 0
+		if hasMatch == invert {
+			if end == size {
+				break
+			}
+			start = end + 1
+			continue
+		}
+		if list {
+			matchedFile(path, arg)
+			return true
+		}
+
+		if only {
+			for _, mm := range indexes {
+				atomic.AddInt64(&countMatch, 1)
+				if count {
+					matched = true
+					continue
+				}
+				part := line[mm[0]:mm[1]]
+				if arg.atty && maybeBinary(part) {
+					errorLine(fmt.Sprintf("matched binary file: %s", path))
+					return true
+				}
+				if number {
+					matchedLineBytes(path, lineNo, mm[0], part, arg)
+				} else {
+					matchedLineBytes("", 0, mm[0], part, arg)
+				}
+				matched = true
+			}
+		} else {
+			atomic.AddInt64(&countMatch, 1)
+			if count {
+				matched = true
+			} else {
+				matchedIndex := -1
+				if hasMatch {
+					matchedIndex = indexes[0][0]
+				}
+				if arg.atty && maybeBinary(line) {
+					errorLine(fmt.Sprintf("matched binary file: %s", path))
+					return true
+				}
+				if arg.single && !number {
+					matchedLineBytes("", -1, matchedIndex, line, arg)
+				} else {
+					matchedLineBytes(path, lineNo, matchedIndex, line, arg)
 				}
 				matched = true
 			}
@@ -508,8 +724,13 @@ func doGrep(path string, fb []byte, arg *GrepArg) bool {
 	re, _ := arg.pattern.(*regexp.Regexp)
 	rs, _ := arg.pattern.(string)
 
-	if re == nil && rs != "" && !ignorecase && len(encs) == 1 && encs[0] == "utf-8" {
-		return doGrepFixedUTF8(path, fb, arg, []byte(rs))
+	if re == nil && rs != "" && len(encs) == 1 && encs[0] == "utf-8" {
+		if !ignorecase {
+			return doGrepFixedUTF8(path, fb, arg, arg.needle)
+		}
+		if arg.ascii {
+			return doGrepFixedUTF8FoldASCII(path, fb, arg, arg.folded)
+		}
 	}
 
 	var okay bool
@@ -1251,13 +1472,7 @@ func doMain() int {
 		fi, err := os.Stat(arg)
 		if err == nil && fi.Mode().IsRegular() {
 			// existing files: emit grep directly.
-			ch <- &GrepArg{
-				pattern: pattern,
-				input:   arg,
-				single:  false,
-				atty:    atty,
-				ascii:   ascii,
-			}
+			ch <- newGrepArg(pattern, arg, fi.Size(), false, atty, ascii)
 			continue
 		} else if err == nil && fi.Mode().IsDir() {
 			// existing directories: no need to prepare extra for glob.
@@ -1279,14 +1494,7 @@ func doMain() int {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{
-					pattern: pattern,
-					input:   path,
-					size:    fi.Size(),
-					single:  nargs == 1,
-					atty:    atty,
-					ascii:   ascii,
-				}
+				ch <- newGrepArg(pattern, path, fi.Size(), nargs == 1, atty, ascii)
 				continue
 			} else {
 				root = path
@@ -1448,14 +1656,7 @@ func doMain() int {
 				if verbose {
 					println("search:", path)
 				}
-				ch <- &GrepArg{
-					pattern: pattern,
-					input:   path,
-					size:    mode.Size(),
-					single:  false,
-					atty:    atty,
-					ascii:   ascii,
-				}
+				ch <- newGrepArg(pattern, path, mode.Size(), false, atty, ascii)
 			}
 			return nil
 		})
@@ -1524,14 +1725,47 @@ func prepareGlob(arg string) (root, globmask string) {
 }
 
 func isASCII(s string) bool {
-	return strings.IndexFunc(s, func(r rune) bool {
-		return r > 127
-	}) == -1
+	for i := 0; i < len(s); i++ {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
 }
 
 // isLiteralRegexp checks regexp is a simple literal or not.
 func isLiteralRegexp(expr string) bool {
 	return regexp.QuoteMeta(expr) == expr
+}
+
+func buildOutputPath(path string) string {
+	if fullpath || path == "" {
+		return path
+	}
+	if fe, err := filepath.Rel(cwd, path); err == nil {
+		return fe
+	}
+	return path
+}
+
+func newGrepArg(pattern interface{}, path string, size int64, single, atty, ascii bool) *GrepArg {
+	arg := &GrepArg{
+		pattern: pattern,
+		input:   path,
+		size:    size,
+		single:  single,
+		atty:    atty,
+		ascii:   ascii,
+		output:  buildOutputPath(path),
+	}
+	if s, ok := pattern.(string); ok {
+		arg.needle = []byte(s)
+		if ignorecase && ascii {
+			arg.folded = make([]byte, len(arg.needle))
+			lowerASCIIBytes(arg.folded, arg.needle)
+		}
+	}
+	return arg
 }
 
 func main() {
